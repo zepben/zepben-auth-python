@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: zepben.auth
+Version: 0.1
+Summary: Utilities for authenticating to the Evolve App Server and Energy Workbench Server
+Home-page: https://bitbucket.org/zepben/zepben-auth-python
+Author: Ramon Bouckaert
+Author-email: ramon.bouckaert@zepben.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
