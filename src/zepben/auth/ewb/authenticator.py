@@ -1,12 +1,20 @@
-from dataclasses import dataclass
-import warnings
-from enum import Enum
+#  Copyright 2020 Zeppelin Bend Pty Ltd
+#
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 import time
+import warnings
+from dataclasses import dataclass
+from enum import Enum
 
 import jwt
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 from zepben.auth.util import construct_url
+
+__all__ = ["EwbAuthenticator"]
 
 
 class EwbAuthenticator:
@@ -16,6 +24,7 @@ class EwbAuthenticator:
         A data class that represents the auth config returned from the EWB server's ewb/config/auth endpoint.
         """
 
+
         class AuthMethod(Enum):
             """
             An enum class that represents the different authentication methods that could be returned from the server's
@@ -24,9 +33,11 @@ class EwbAuthenticator:
             NONE = "NONE"
             AUTH0 = "AUTH0"
 
+
         auth_method: AuthMethod
         audience: str
         issuer_domain: str
+
 
     class EwbAuthenticationError(Exception):
         def __init__(self, message: str):
@@ -36,6 +47,7 @@ class EwbAuthenticator:
         An exception caused by an unexpected response from the Evolve App Server when trying to authenticate
         """
         pass
+
 
     __access_token: str = None
     __refresh_token: str = None
@@ -52,17 +64,17 @@ class EwbAuthenticator:
     __issuer_protocol: str
 
     def __init__(
-            self,
-            host: str,
-            port: int,
-            username: str,
-            password: str,
-            client_id: str,
-            client_secret: str = None,
-            conf_address: str = "/ewb/auth",
-            protocol: str = "https",
-            issuer_protocol: str = "https",
-            verify_certificate: bool = True
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        client_id: str,
+        client_secret: str = None,
+        conf_address: str = "/ewb/auth",
+        protocol: str = "https",
+        issuer_protocol: str = "https",
+        verify_certificate: bool = True
     ):
         self.__host = host
         self.__port = port

@@ -1,3 +1,9 @@
+#  Copyright 2020 Zeppelin Bend Pty Ltd
+#
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 import random
 import string
 import time
@@ -38,6 +44,7 @@ def eas_authenticator_test_mocked_get_requests(*args, **kwargs):
         def json(self):
             return self.json_data
 
+
     if args[0] == f"{mock_protocol}://{mock_host}:{mock_port}/api/config/auth":
         return MockResponse({
             "configType": mock_auth_method.value,
@@ -56,6 +63,7 @@ def eas_authenticator_test_mocked_post_requests(*args, **kwargs):
 
         def json(self):
             return self.json_data
+
 
     if args[0] == f"{mock_issuer_protocol}://{mock_self_issuer_domain}:{mock_port}/oauth/token":
         return MockResponse({

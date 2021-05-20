@@ -1,3 +1,9 @@
+#  Copyright 2020 Zeppelin Bend Pty Ltd
+#
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 import random
 import string
 import time
@@ -21,7 +27,7 @@ mock_password = ''.join(random.choices(string.ascii_lowercase, k=10))
 mock_client_id = ''.join(random.choices(string.ascii_lowercase, k=10))
 mock_client_secret = ''.join(random.choices(string.ascii_lowercase, k=10))
 mock_host = ''.join(random.choices(string.ascii_lowercase, k=10))
-mock_port = random.randint(80,9999)
+mock_port = random.randint(80, 9999)
 mock_protocol = ''.join(random.choices(string.ascii_lowercase, k=10))
 mock_issuer_protocol = ''.join(random.choices(string.ascii_lowercase, k=10))
 
@@ -34,6 +40,7 @@ def eas_authenticator_test_mocked_get_requests(*args, **kwargs):
 
         def json(self):
             return self.json_data
+
 
     if args[0] == f"{mock_protocol}://{mock_host}:{mock_port}/ewb/auth":
         return MockResponse({
@@ -53,6 +60,7 @@ def eas_authenticator_test_mocked_post_requests(*args, **kwargs):
 
         def json(self):
             return self.json_data
+
 
     if args[0] == f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/oauth/token":
         return MockResponse({

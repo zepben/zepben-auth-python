@@ -1,6 +1,12 @@
+#  Copyright 2020 Zeppelin Bend Pty Ltd
+#
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 import time
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
 from enum import Enum
 from hashlib import sha256
 
@@ -10,12 +16,16 @@ from urllib3.exceptions import InsecureRequestWarning
 from zepben.auth.util import construct_url
 
 
+__all__ = ["EasAuthenticator"]
+
+
 class EasAuthenticator:
     @dataclass
     class ServerConfig:
         """
             A data class that represents the auth config returned from the server's api/config/auth endpoint.
         """
+
 
         class AuthMethod(Enum):
             """
@@ -26,9 +36,11 @@ class EasAuthenticator:
             SELF = "self"
             AUTH0 = "auth0"
 
+
         auth_method: AuthMethod
         audience: str
         issuer_domain: str
+
 
     class EasAuthenticationError(Exception):
         def __init__(self, message: str):
@@ -38,6 +50,7 @@ class EasAuthenticator:
         An exception caused by an unexpected response from the Evolve App Server when trying to authenticate
         """
         pass
+
 
     __access_token: str = None
     __refresh_token: str = None
@@ -54,17 +67,17 @@ class EasAuthenticator:
     __conf_address: str
 
     def __init__(
-            self,
-            host: str,
-            port: int,
-            username: str,
-            password: str,
-            client_id: str,
-            client_secret: str = None,
-            verify_certificate: bool = True,
-            conf_address: str = "/api/config/auth",
-            protocol: str = "https",
-            issuer_protocol: str = "https"
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        client_id: str,
+        client_secret: str = None,
+        verify_certificate: bool = True,
+        conf_address: str = "/api/config/auth",
+        protocol: str = "https",
+        issuer_protocol: str = "https"
     ):
         self.__host = host
         self.__port = port
