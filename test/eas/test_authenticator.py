@@ -64,7 +64,8 @@ def eas_authenticator_test_mocked_post_requests(*args, **kwargs):
 
     if args[0] == f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/oauth/token":
         return MockResponse({
-            "access_token": mock_access_token
+            "access_token": mock_access_token,
+            "refresh_token": mock_refresh_token
         }, 200)
 
     return MockResponse(None, 404)
