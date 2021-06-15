@@ -103,7 +103,7 @@ class EasAuthenticator:
                 "username": self.__username,
                 "password": self.__password,
                 "audience": self.get_server_config().audience,
-                "scope": "offline_access",
+                "scope": "offline_access openid profile email",
                 "client_id": self.__client_id
             }
         ).json()
@@ -127,7 +127,7 @@ class EasAuthenticator:
             ),
             headers={"content-type": "application/x-www-form-urlencoded"},
             data={
-                "grant_type": "refresh_token",
+                "grant_type": "refresh_token openid profile email",
                 "refresh_token": self.__refresh_token,
                 "audience": self.get_server_config().audience,
                 "scope": "offline_access",
