@@ -15,5 +15,8 @@ def construct_url(
     port: int = None,
     path: str = None
 ) -> str:
+    for split_host in host.split(":"):
+        if (split_host != "http" and split_host != "https" and split_host.isnumeric() == False):
+            host = split_host
     return (URL(url=host) if URL(url=host).host else URL(host=host)) \
         .replace(scheme=protocol, port=port, path=path).as_string()
