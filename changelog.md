@@ -1,21 +1,16 @@
-### v0.3.0
+### v0.5.0
 
 ##### Breaking Changes
-
-* ZepbenAuthenticator now replaces all previous authenticators, and is configurable.
+* None.
 
 ##### New Features
-
-* Added class ZepbenAuthenticator
+* None.
 
 ##### Enhancements
-
 * None.
 
 ##### Fixes
-
-* None
+* None.
 
 ##### Notes
-
 * None.
