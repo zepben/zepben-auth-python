@@ -1,0 +1,12 @@
+[run]
+source = zepben.auth
+
+[paths]
+source = src/
+
+[report]
+fail_under = 70
+skip_empty = True
+skip_covered = True
+exclude_lines =
+    if TYPE_CHECKING:
