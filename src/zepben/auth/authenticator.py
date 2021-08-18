@@ -43,6 +43,12 @@ class ZepbenAuthenticator(object):
     issuer_domain: str
     """ The domain of the token issuer. """
 
+    auth_method: AuthMethod
+    """ The authentication method used by the server """
+
+    verify_certificate: False
+    """ Whether to verify the SSL certificate when making requests """
+
     issuer_protocol: str = "https"
     """ Protocol of the token issuer. You should not change this unless you are absolutely sure of what you are doing. Setting it to
         anything other than https is a major security risk as tokens will be sent in the clear. """
@@ -96,7 +102,8 @@ class ZepbenAuthenticator(object):
         response = requests.post(
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
             headers={"content-type": "application/x-www-form-urlencoded"},
-            data=self.refresh_request_data if use_refresh else self.token_request_data
+            data=self.refresh_request_data if use_refresh else self.token_request_data,
+            verify=self.verify_certificate
         )
 
         if not response.ok:
@@ -124,8 +131,8 @@ def create_authenticator(conf_address: str, verify_certificate: bool = True, aut
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenAuthenticotar`
 
     :param conf_address: Location to retrieve authentication configuration from. Must be a HTTP address that returns a JSON response.
-    :param verify_certificate: Whether to verify the certificate of `conf_address`. Note you should only use a trusted server for `conf_address` and never
-        set this to False in a production environment.
+    :param verify_certificate: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
+        and never set this to False in a production environment.
     :param auth_type_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
     :param audience_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
     :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
@@ -141,7 +148,12 @@ def create_authenticator(conf_address: str, verify_certificate: bool = True, aut
                 auth_config_json = response.json()
                 auth_method = AuthMethod(auth_config_json[auth_type_field])
                 if auth_method is not AuthMethod.NONE:
-                    return ZepbenAuthenticator(auth_config_json[audience_field], auth_config_json[issuer_domain_field])
+                    return ZepbenAuthenticator(
+                        auth_config_json[audience_field],
+                        auth_config_json[issuer_domain_field],
+                        auth_method,
+                        verify_certificate
+                    )
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
         else:
