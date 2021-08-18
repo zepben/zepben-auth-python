@@ -52,7 +52,7 @@ class ZepbenAuthenticator(object):
     auth_method: AuthMethod
     """ The authentication method used by the server """
 
-    verify_certificate: False
+    verify_certificate: bool = False
     """ Whether to verify the SSL certificate when making requests """
 
     issuer_protocol: str = "https"
