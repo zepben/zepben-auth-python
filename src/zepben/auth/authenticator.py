@@ -30,6 +30,12 @@ class AuthMethod(Enum):
     An enum class that represents the different authentication methods that could be returned from the server's
     ewb/config/auth endpoint.
     """
+    @classmethod
+    def _missing_(cls, value):
+        for member in cls:
+            if member.value == value.upper():
+                return member
+
     NONE = "NONE"
     SELF = "self"
     AUTH0 = "AUTH0"
