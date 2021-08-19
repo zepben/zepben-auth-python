@@ -17,7 +17,7 @@ setup(
     packages=find_namespace_packages(where="src"),
     python_requires='>=3.7',
     install_requires=[
-        "requests==2.25.1",
+        "requests==2.26.0",
         "urllib3==1.26.6",
         "PyJWT==2.1.0",
         "grpcio==1.36.0",
