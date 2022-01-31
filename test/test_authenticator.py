@@ -213,12 +213,12 @@ class TestZepbenAuthenticator:
             auth_method=mock_auth_method,
             verify_certificate=mock_verify_certificate,
             issuer_protocol=mock_issuer_protocol,
-            token_path="/fake/path"
+            token_path="/fake/path",
+            use_refresh=True
         )
 
         authenticator.refresh_request_data['refresh_token'] = mock_refresh_token
         mock_post.assert_not_called()  # POST request is not made before get_token() is called
-        authenticator._refresh_token = mock_refresh_token
         assert f"Bearer {TOKEN}" == authenticator.fetch_token()
 
         mock_post.assert_called_once_with(

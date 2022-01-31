@@ -71,12 +71,17 @@ class ZepbenAuthenticator(object):
     refresh_request_data = {}
     """ Data to pass in refresh token requests. """
 
+    use_refresh: bool = False
+    """ Whether to use refresh tokens. Will be true if `refresh_request_data` is provided """
+
     _access_token = None
     _refresh_token = None
     _token_expiry = datetime.min
     _token_type = None
 
     def __init__(self):
+        if self.refresh_request_data:
+            self.use_refresh = bool(self.refresh_request_data)
         self.token_request_data["audience"] = self.audience
         self.refresh_request_data["audience"] = self.audience
 
@@ -89,7 +94,7 @@ class ZepbenAuthenticator(object):
             # Stored token has expired, try to refresh
             self._access_token = None
             if self._refresh_token:
-                self._fetch_token_auth0(use_refresh=True)
+                self._fetch_token_auth0()
 
             if self._access_token is None:
                 # If using the refresh token did not work for any reason, self._access_token will still be None.
@@ -104,11 +109,11 @@ class ZepbenAuthenticator(object):
 
         return f"{self._token_type} {self._access_token}"
 
-    def _fetch_token_auth0(self, use_refresh: bool = False):
+    def _fetch_token_auth0(self):
         response = requests.post(
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
             headers={"content-type": "application/x-www-form-urlencoded"},
-            data=self.refresh_request_data if use_refresh else self.token_request_data,
+            data=self.refresh_request_data if self.use_refresh else self.token_request_data,
             verify=self.verify_certificate
         )
 
@@ -125,9 +130,9 @@ class ZepbenAuthenticator(object):
 
         self._token_type = data["token_type"]
         self._access_token = data["access_token"]
-        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, algorithms=["RS256"], options={"verify_signature": False})['exp'])
+        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, algorithms=[self.algorithm], options={"verify_signature": False})['exp'])
 
-        if use_refresh:
+        if self.use_refresh:
             self._refresh_token = data["refresh_token"]
 
 
