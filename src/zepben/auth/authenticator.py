@@ -89,7 +89,7 @@ class ZepbenAuthenticator(object):
             # Stored token has expired, try to refresh
             self._access_token = None
             if self._refresh_token:
-                self._fetch_token_auth0(use_refresh=True)
+                self._fetch_token_auth0(True)
 
             if self._access_token is None:
                 # If using the refresh token did not work for any reason, self._access_token will still be None.
@@ -125,10 +125,8 @@ class ZepbenAuthenticator(object):
 
         self._token_type = data["token_type"]
         self._access_token = data["access_token"]
-        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, algorithms=["RS256"], options={"verify_signature": False})['exp'])
-
-        if use_refresh:
-            self._refresh_token = data["refresh_token"]
+        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, algorithms=[self.algorithm], options={"verify_signature": False})['exp'])
+        self._refresh_token = data.get("refresh_token", None)
 
 
 def create_authenticator(conf_address: str, verify_certificate: bool = True, auth_type_field: str = 'authType',
