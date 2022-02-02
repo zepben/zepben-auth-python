@@ -62,9 +62,6 @@ class ZepbenAuthenticator(object):
     token_path: str = "/oauth/token"
     """ Path for requesting token from `issuer_domain`. """
 
-    algorithm: str = "RS256"
-    """ Algorithm used for decoding tokens. Note tokens are only decoded for checking expiry time."""
-
     token_request_data = {}
     """ Data to pass in token requests. """
 
@@ -125,7 +122,7 @@ class ZepbenAuthenticator(object):
 
         self._token_type = data["token_type"]
         self._access_token = data["access_token"]
-        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, algorithms=[self.algorithm], options={"verify_signature": False})['exp'])
+        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, options={"verify_signature": False})['exp'])
         self._refresh_token = data.get("refresh_token", None)
 
 
