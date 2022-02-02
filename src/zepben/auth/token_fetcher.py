@@ -16,7 +16,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from zepben.auth.util import construct_url
 
 
-__all__ = ["ZepbenAuthenticator", "AuthMethod", "AuthException", "create_authenticator"]
+__all__ = ["ZepbenTokenFetcher", "AuthMethod", "AuthException", "create_token_fetcher"]
 
 _AUTH_HEADER_KEY = 'authorization'
 
@@ -42,7 +42,7 @@ class AuthMethod(Enum):
 
 
 @dataclass
-class ZepbenAuthenticator(object):
+class ZepbenTokenFetcher(object):
     audience: str
     """ Audience to use when requesting tokens """
 
@@ -126,19 +126,19 @@ class ZepbenAuthenticator(object):
         self._refresh_token = data.get("refresh_token", None)
 
 
-def create_authenticator(conf_address: str, verify_certificate: bool = True, auth_type_field: str = 'authType',
-                         audience_field: str = 'audience', issuer_domain_field: str = 'issuer') -> Optional[ZepbenAuthenticator]:
+def create_token_fetcher(conf_address: str, verify_certificate: bool = True, auth_type_field: str = 'authType',
+                         audience_field: str = 'audience', issuer_domain_field: str = 'issuer') -> Optional[ZepbenTokenFetcher]:
     """
-    Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenAuthenticotar`
+    Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
 
     :param conf_address: Location to retrieve authentication configuration from. Must be a HTTP address that returns a JSON response.
     :param verify_certificate: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
         and never set this to False in a production environment.
-    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
-    :param audience_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
-    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
+    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
 
-    :returns: A :class:`ZepbenAuthenticator` if the server reported authentication was configured, otherwise None.
+    :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
     with warnings.catch_warnings():
         if not verify_certificate:
@@ -149,7 +149,7 @@ def create_authenticator(conf_address: str, verify_certificate: bool = True, aut
                 auth_config_json = response.json()
                 auth_method = AuthMethod(auth_config_json[auth_type_field])
                 if auth_method is not AuthMethod.NONE:
-                    return ZepbenAuthenticator(
+                    return ZepbenTokenFetcher(
                         auth_config_json[audience_field],
                         auth_config_json[issuer_domain_field],
                         auth_method,
