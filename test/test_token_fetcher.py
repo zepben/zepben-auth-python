@@ -1,4 +1,4 @@
-#  Copyright 2020 Zeppelin Bend Pty Ltd
+#  Copyright 2022 Zeppelin Bend Pty Ltd
 #
 #  This Source Code Form is subject to the terms of the Mozilla Public
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,7 +11,7 @@ from unittest.mock import ANY
 
 import pytest
 
-from zepben.auth.token_fetcher import ZepbenTokenFetcher, AuthException, create_token_fetcher, AuthMethod
+from zepben.auth.client.token_fetcher import ZepbenTokenFetcher, AuthException, create_token_fetcher, AuthMethod
 
 TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZha2VraWQifQ.eyJpc3MiOiJodHRwczovL2lzc3Vlci8iLCJzdWIiOiJmYWtlIiwiYXVkIjoiaHR0cHM6Ly9mYWtlLWF1ZC8iLCJpYXQiOjE1OTE4MzQxNzksImV4cCI6OTU5MTkyMDU3OSwiYXpwIjoid2U5ZDNSME5jTUNWckpDZ2ROSWVmWWx6aHo2VE9SaGciLCJzY29wZSI6IndyaXRlOm5ldHdvcmsgcmVhZDpuZXR3b3JrIHdyaXRlOm1ldHJpY3MgcmVhZDpld2IiLCJndHkiOiJjbGllbnQtY3JlZGVudGlhbHMiLCJwZXJtaXNzaW9ucyI6WyJ3cml0ZTpuZXR3b3JrIiwicmVhZDpuZXR3b3JrIiwid3JpdGU6bWV0cmljcyIsInJlYWQ6ZXdiIl19.ay_YTwRsfcNzVdmQ4EgmuNMMypfZIIc8K9dCCtLqUmUJDtE7NUuKaVAmGDdmW1J-ngm0UsH4k6B5QpPIJnLIROpdDf7aRzdE9hNFuSHR3arpyCzmO2-TiFDZLFXQjHf0Q-BaxGoXLQBupGYuQaG_3flaLPB3hPV0nqPoBTIoJgG8n2w0Uo2tePe_y2Blqco1sK2wElwyMlYc-UuTyFSvwKlpSXYmO4ppVmbAa9lS2ley6lcv2TwXLCk0KfIIH2E5OBvJHevZqYEzFBAeLCnahKoWxexsVvEfZr40Nhc6oPRT5yJfHRBnCrDnO1fE96rqguQpsDG-HWCtd2GkpnAXNg"
 
@@ -37,7 +37,7 @@ class MockResponse:
         return self.json_data
 
 
-@mock.patch('zepben.auth.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
+@mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
     {"authType": "AUTH0", "audience": mock_audience, "issuer": "test_issuer"}, 200))
 def test_create_token_fetcher_success(mock_get):
     token_fetcher = create_token_fetcher("https://testaddress")
@@ -51,7 +51,7 @@ def test_create_token_fetcher_success(mock_get):
     )
 
 
-@mock.patch('zepben.auth.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
+@mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
     {"authType": "NONE", "audience": "", "issuer": ""}, 200))
 def test_create_token_fetcher_no_auth(mock_get):
     token_fetcher = create_token_fetcher("https://testaddress")
@@ -63,7 +63,7 @@ def test_create_token_fetcher_no_auth(mock_get):
     )
 
 
-@mock.patch('zepben.auth.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 404))
+@mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 404))
 def test_create_token_fetcher_bad_response(mock_get):
     with pytest.raises(ValueError, match=f"https://testaddress responded with error: 404 - "):
         token_fetcher = create_token_fetcher("https://testaddress")
@@ -74,7 +74,7 @@ def test_create_token_fetcher_bad_response(mock_get):
     )
 
 
-@mock.patch('zepben.auth.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 200, reason='test reason', text='test text'))
+@mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 200, reason='test reason', text='test text'))
 def test_create_token_fetcher_missing_json(mock_get):
     with pytest.raises(ValueError, match=f"Expected JSON response from https://testaddress, but got: test text."):
         token_fetcher = create_token_fetcher("https://testaddress")
@@ -87,7 +87,7 @@ def test_create_token_fetcher_missing_json(mock_get):
 
 class TestZepbentoken_fetcher:
 
-    @mock.patch('zepben.auth.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(
+    @mock.patch('zepben.auth.client.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(
         {"access_token": TOKEN, "refresh_token": mock_refresh_token, "token_type": "Bearer"}, 200))
     def test_fetch_token_successful(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
@@ -110,7 +110,7 @@ class TestZepbentoken_fetcher:
             verify=mock_verify_certificate
         )  # Appropriate-looking password grant request was made to the issuer
 
-    @mock.patch('zepben.auth.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(None, 404, "test reason", "test text"))
+    @mock.patch('zepben.auth.client.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(None, 404, "test reason", "test text"))
     def test_fetch_token_throws_exception_on_bad_response(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
             audience=mock_audience,
@@ -133,7 +133,7 @@ class TestZepbentoken_fetcher:
             verify=mock_verify_certificate
         )
 
-    @mock.patch('zepben.auth.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(None, 200, "test reason", "test text"))
+    @mock.patch('zepben.auth.client.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(None, 200, "test reason", "test text"))
     def test_fetch_token_throws_exception_on_missing_json(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
             audience=mock_audience,
@@ -156,7 +156,7 @@ class TestZepbentoken_fetcher:
             verify=mock_verify_certificate
         )
 
-    @mock.patch('zepben.auth.token_fetcher.requests.post',
+    @mock.patch('zepben.auth.client.token_fetcher.requests.post',
                 side_effect=lambda *args, **kwargs: MockResponse({'error': 'fail', 'error_description': 'test error description'}, 200))
     def test_fetch_token_throws_exception_on_error_response(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
@@ -180,7 +180,7 @@ class TestZepbentoken_fetcher:
             verify=mock_verify_certificate
         )
 
-    @mock.patch('zepben.auth.token_fetcher.requests.post',
+    @mock.patch('zepben.auth.client.token_fetcher.requests.post',
                 side_effect=lambda *args, **kwargs: MockResponse({'test': 'fail'}, 200))
     def test_fetch_token_throws_exception_on_missing_access_token(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
@@ -204,7 +204,7 @@ class TestZepbentoken_fetcher:
             verify=mock_verify_certificate
         )
 
-    @mock.patch('zepben.auth.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(
+    @mock.patch('zepben.auth.client.token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(
         {"access_token": TOKEN, "refresh_token": mock_refresh_token, "token_type": "Bearer"}, 200))
     def test_fetch_token_successful_using_refresh(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
