@@ -22,9 +22,9 @@ need to use this library directly.
 # Usage #
 
 ```python
-from zepben.auth import create_authenticator
+from zepben.auth import create_token_fetcher
 
-authenticator = create_authenticator("https://localhost/auth")
+authenticator = create_token_fetcher("https://localhost/auth")
 
 authenticator.token_request_data.update({
     {

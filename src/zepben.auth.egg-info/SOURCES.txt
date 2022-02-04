@@ -7,6 +7,7 @@ src/zepben.auth.egg-info/dependency_links.txt
 src/zepben.auth.egg-info/requires.txt
 src/zepben.auth.egg-info/top_level.txt
 src/zepben/auth/__init__.py
-src/zepben/auth/authenticator.py
-src/zepben/auth/util.py
-test/test_authenticator.py
+src/zepben/auth/client/__init__.py
+src/zepben/auth/client/token_fetcher.py
+src/zepben/auth/client/util.py
+test/test_token_fetcher.py
