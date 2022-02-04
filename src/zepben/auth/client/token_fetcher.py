@@ -158,7 +158,8 @@ def create_token_fetcher(conf_address: str, verify_certificate: bool = True, aut
                         auth_config_json[audience_field],
                         auth_config_json[issuer_domain_field],
                         auth_method,
-                        verify_certificate
+                        verify_certificate,
+                        ca_filename
                     )
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
