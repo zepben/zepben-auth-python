@@ -131,7 +131,8 @@ class ZepbenTokenFetcher(object):
 
 
 def create_token_fetcher(conf_address: str, verify_certificate: bool = True, auth_type_field: str = 'authType', audience_field: str = 'audience',
-                         issuer_domain_field: str = 'issuer', ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
+                         issuer_domain_field: str = 'issuer', conf_ca_filename: Optional[str] = None,
+                         auth_ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
     """
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
 
@@ -148,7 +149,7 @@ def create_token_fetcher(conf_address: str, verify_certificate: bool = True, aut
     with warnings.catch_warnings():
         if not verify_certificate:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-        response = requests.get(conf_address, verify=verify_certificate and (ca_filename or True))
+        response = requests.get(conf_address, verify=verify_certificate and (conf_ca_filename or True))
         if response.ok:
             try:
                 auth_config_json = response.json()
@@ -159,7 +160,7 @@ def create_token_fetcher(conf_address: str, verify_certificate: bool = True, aut
                         auth_config_json[issuer_domain_field],
                         auth_method,
                         verify_certificate,
-                        ca_filename
+                        auth_ca_filename
                     )
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
