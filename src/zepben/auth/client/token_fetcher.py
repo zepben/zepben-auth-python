@@ -130,26 +130,27 @@ class ZepbenTokenFetcher(object):
         self._refresh_token = data.get("refresh_token", None)
 
 
-def create_token_fetcher(conf_address: str, verify_certificate: bool = True, auth_type_field: str = 'authType', audience_field: str = 'audience',
+def create_token_fetcher(conf_address: str, verify_certificates: bool = True, auth_type_field: str = 'authType',audience_field: str = 'audience',
                          issuer_domain_field: str = 'issuer', conf_ca_filename: Optional[str] = None,
                          auth_ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
     """
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
 
     :param conf_address: Location to retrieve authentication configuration from. Must be a HTTP address that returns a JSON response.
-    :param verify_certificate: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
+    :param verify_certificates: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
         and never set this to False in a production environment.
     :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
     :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
     :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
-    :param ca_filename: An optional filename of the certificate authority used to verify HTTPS requests. Ignored if `verify_certificate` is False.
+    :param conf_ca_filename: An optional filename of the certificate authority used to verify configuration response. Ignored if `verify_certificates` is False.
+    :param auth_ca_filename: An optional filename of the certificate authority used to verify auth responses. Ignored if `verify_certificates` is False.
 
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
     with warnings.catch_warnings():
-        if not verify_certificate:
+        if not verify_certificates:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-        response = requests.get(conf_address, verify=verify_certificate and (conf_ca_filename or True))
+        response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
         if response.ok:
             try:
                 auth_config_json = response.json()
@@ -159,7 +160,7 @@ def create_token_fetcher(conf_address: str, verify_certificate: bool = True, aut
                         auth_config_json[audience_field],
                         auth_config_json[issuer_domain_field],
                         auth_method,
-                        verify_certificate,
+                        verify_certificates,
                         auth_ca_filename
                     )
             except ValueError as e:
