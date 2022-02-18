@@ -130,7 +130,7 @@ class ZepbenTokenFetcher(object):
         self._refresh_token = data.get("refresh_token", None)
 
 
-def create_token_fetcher(conf_address: str, verify_certificates: bool = True, auth_type_field: str = 'authType',audience_field: str = 'audience',
+def create_token_fetcher(conf_address: str, verify_certificates: bool = True, auth_type_field: str = 'authType', audience_field: str = 'audience',
                          issuer_domain_field: str = 'issuer', conf_ca_filename: Optional[str] = None,
                          auth_ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
     """
