@@ -1,4 +1,4 @@
-#  Copyright 2021 Zeppelin Bend Pty Ltd
+#  Copyright 2022 Zeppelin Bend Pty Ltd
 #
 #  This Source Code Form is subject to the terms of the Mozilla Public
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,10 +13,10 @@ import requests
 from dataclassy import dataclass
 from urllib3.exceptions import InsecureRequestWarning
 
-from zepben.auth.util import construct_url
+from zepben.auth.client.util import construct_url
 
 
-__all__ = ["ZepbenAuthenticator", "AuthMethod", "AuthException", "create_authenticator"]
+__all__ = ["ZepbenTokenFetcher", "AuthMethod", "AuthException", "create_token_fetcher"]
 
 _AUTH_HEADER_KEY = 'authorization'
 
@@ -31,7 +31,7 @@ class AuthMethod(Enum):
     ewb/config/auth endpoint.
     """
     @classmethod
-    def _missing_(cls, value):
+    def _missing_(cls, value: str):
         for member in cls:
             if member.value == value.upper():
                 return member
@@ -42,7 +42,7 @@ class AuthMethod(Enum):
 
 
 @dataclass
-class ZepbenAuthenticator(object):
+class ZepbenTokenFetcher(object):
     audience: str
     """ Audience to use when requesting tokens """
 
@@ -62,14 +62,15 @@ class ZepbenAuthenticator(object):
     token_path: str = "/oauth/token"
     """ Path for requesting token from `issuer_domain`. """
 
-    algorithm: str = "RS256"
-    """ Algorithm used for decoding tokens. Note tokens are only decoded for checking expiry time."""
-
     token_request_data = {}
     """ Data to pass in token requests. """
 
     refresh_request_data = {}
     """ Data to pass in refresh token requests. """
+
+    ca_filename: Optional[str] = None
+    """ Filename of certificate authority used to verify the source and integrity of tokens. The requests library will use the certify package for the list of
+        trusted certificates if this is None. Ignored if `verify_certificate` is False."""
 
     _access_token = None
     _refresh_token = None
@@ -109,7 +110,7 @@ class ZepbenAuthenticator(object):
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
             headers={"content-type": "application/x-www-form-urlencoded"},
             data=self.refresh_request_data if use_refresh else self.token_request_data,
-            verify=self.verify_certificate
+            verify=self.verify_certificate and (self.ca_filename or True)
         )
 
         if not response.ok:
@@ -125,38 +126,42 @@ class ZepbenAuthenticator(object):
 
         self._token_type = data["token_type"]
         self._access_token = data["access_token"]
-        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, algorithms=[self.algorithm], options={"verify_signature": False})['exp'])
+        self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, options={"verify_signature": False})['exp'])
         self._refresh_token = data.get("refresh_token", None)
 
 
-def create_authenticator(conf_address: str, verify_certificate: bool = True, auth_type_field: str = 'authType',
-                         audience_field: str = 'audience', issuer_domain_field: str = 'issuer') -> Optional[ZepbenAuthenticator]:
+def create_token_fetcher(conf_address: str, verify_certificates: bool = True, auth_type_field: str = 'authType', audience_field: str = 'audience',
+                         issuer_domain_field: str = 'issuer', conf_ca_filename: Optional[str] = None,
+                         auth_ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
     """
-    Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenAuthenticotar`
+    Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
 
     :param conf_address: Location to retrieve authentication configuration from. Must be a HTTP address that returns a JSON response.
-    :param verify_certificate: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
+    :param verify_certificates: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
         and never set this to False in a production environment.
-    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
-    :param audience_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
-    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `authenticator.auth_method`.
+    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param conf_ca_filename: An optional filename of the certificate authority used to verify configuration response. Ignored if `verify_certificates` is False.
+    :param auth_ca_filename: An optional filename of the certificate authority used to verify auth responses. Ignored if `verify_certificates` is False.
 
-    :returns: A :class:`ZepbenAuthenticator` if the server reported authentication was configured, otherwise None.
+    :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
     with warnings.catch_warnings():
-        if not verify_certificate:
+        if not verify_certificates:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-        response = requests.get(conf_address, verify=verify_certificate)
+        response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
         if response.ok:
             try:
                 auth_config_json = response.json()
                 auth_method = AuthMethod(auth_config_json[auth_type_field])
                 if auth_method is not AuthMethod.NONE:
-                    return ZepbenAuthenticator(
+                    return ZepbenTokenFetcher(
                         auth_config_json[audience_field],
                         auth_config_json[issuer_domain_field],
                         auth_method,
-                        verify_certificate
+                        verify_certificates,
+                        auth_ca_filename
                     )
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
