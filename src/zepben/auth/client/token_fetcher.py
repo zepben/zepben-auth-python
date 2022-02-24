@@ -7,7 +7,7 @@ import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-
+import logging
 import jwt
 import requests
 from dataclassy import dataclass
@@ -20,6 +20,8 @@ __all__ = ["ZepbenTokenFetcher", "AuthMethod", "AuthException", "create_token_fe
 
 _AUTH_HEADER_KEY = 'authorization'
 
+
+logger = logging.getLogger()
 
 class AuthException(Exception):
     pass
@@ -150,7 +152,12 @@ def create_token_fetcher(conf_address: str, verify_certificates: bool = True, au
     with warnings.catch_warnings():
         if not verify_certificates:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-        response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
+        try:
+            response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
+        except Exception as e:
+            warnings.warn(str(e))
+            warnings.warn("If RemoteDisconnected, check if eas_https in config is set to the same as the target EAS server. This process may hang indefinetly.")
+            raise ConnectionError("Check if eas_https in config is set to the same as the target EAS server")
         if response.ok:
             try:
                 auth_config_json = response.json()
