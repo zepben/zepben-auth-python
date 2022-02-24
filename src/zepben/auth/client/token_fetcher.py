@@ -157,11 +157,11 @@ def create_token_fetcher(conf_address: str, verify_certificates: bool = True, au
                 auth_method = AuthMethod(auth_config_json[auth_type_field])
                 if auth_method is not AuthMethod.NONE:
                     return ZepbenTokenFetcher(
-                        auth_config_json[audience_field],
-                        auth_config_json[issuer_domain_field],
-                        auth_method,
-                        verify_certificates,
-                        auth_ca_filename
+                        audience=auth_config_json[audience_field],
+                        issuer_domain=auth_config_json[issuer_domain_field],
+                        auth_method=auth_method,
+                        verify_certificate=verify_certificates,
+                        ca_filename=auth_ca_filename
                     )
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
