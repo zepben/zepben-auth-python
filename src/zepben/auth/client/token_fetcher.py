@@ -153,8 +153,8 @@ def create_token_fetcher(conf_address: str, verify_certificates: bool = True, au
             response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
         except Exception as e:
             warnings.warn(str(e))
-            warnings.warn("If RemoteDisconnected, check if eas_https in config is set to the same as the target EAS server. This process may hang indefinetly.")
-            raise ConnectionError("Check if eas_https in config is set to the same as the target EAS server")
+            warnings.warn("If RemoteDisconnected, this process may hang indefinetly.")
+            raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
         if response.ok:
             try:
                 auth_config_json = response.json()
