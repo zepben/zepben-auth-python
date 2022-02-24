@@ -7,7 +7,6 @@ import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-import logging
 import jwt
 import requests
 from dataclassy import dataclass
@@ -20,8 +19,6 @@ __all__ = ["ZepbenTokenFetcher", "AuthMethod", "AuthException", "create_token_fe
 
 _AUTH_HEADER_KEY = 'authorization'
 
-
-logger = logging.getLogger()
 
 class AuthException(Exception):
     pass
