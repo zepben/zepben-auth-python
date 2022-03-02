@@ -7,7 +7,6 @@ import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-
 import jwt
 import requests
 from dataclassy import dataclass
@@ -150,18 +149,23 @@ def create_token_fetcher(conf_address: str, verify_certificates: bool = True, au
     with warnings.catch_warnings():
         if not verify_certificates:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
-        response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
+        try:
+            response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
+        except Exception as e:
+            warnings.warn(str(e))
+            warnings.warn("If RemoteDisconnected, this process may hang indefinetly.")
+            raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
         if response.ok:
             try:
                 auth_config_json = response.json()
                 auth_method = AuthMethod(auth_config_json[auth_type_field])
                 if auth_method is not AuthMethod.NONE:
                     return ZepbenTokenFetcher(
-                        auth_config_json[audience_field],
-                        auth_config_json[issuer_domain_field],
-                        auth_method,
-                        verify_certificates,
-                        auth_ca_filename
+                        audience=auth_config_json[audience_field],
+                        issuer_domain=auth_config_json[issuer_domain_field],
+                        auth_method=auth_method,
+                        verify_certificate=verify_certificates,
+                        ca_filename=auth_ca_filename
                     )
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
