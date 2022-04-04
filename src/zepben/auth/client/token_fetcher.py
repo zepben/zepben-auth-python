@@ -51,7 +51,7 @@ class ZepbenTokenFetcher(object):
     auth_method: AuthMethod
     """ The authentication method used by the server """
 
-    verify_certificate: bool = False
+    verify_certificate: bool = True
     """ Whether to verify the SSL certificate when making requests """
 
     issuer_protocol: str = "https"

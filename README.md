@@ -8,7 +8,7 @@ need to use this library directly.
 # Usage #
 
 ```python
-from zepben.auth import create_token_fetcher
+from zepben.auth.client import create_token_fetcher
 
 authenticator = create_token_fetcher("https://localhost/auth")
 
