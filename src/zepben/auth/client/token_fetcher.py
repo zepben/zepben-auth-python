@@ -129,13 +129,16 @@ class ZepbenTokenFetcher(object):
         self._refresh_token = data.get("refresh_token", None)
 
 
-def create_token_fetcher(conf_address: str, verify_certificates: bool = True, auth_type_field: str = 'authType', audience_field: str = 'audience',
+def create_token_fetcher(host: str, port: int = 443, path: Optional[str] = None, verify_certificates: bool = True, auth_type_field: str = 'authType',
+                         audience_field: str = 'audience',
                          issuer_domain_field: str = 'issuer', conf_ca_filename: Optional[str] = None,
                          auth_ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
     """
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
 
-    :param conf_address: Location to retrieve authentication configuration from. Must be a HTTP address that returns a JSON response.
+    :param host: The host to connect to.
+    :param port: The gRPC port for host.
+    :param path: The path for the auth configuration endpoint. "Defaults to checking /auth and /ewb/auth"
     :param verify_certificates: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
         and never set this to False in a production environment.
     :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
@@ -147,14 +150,31 @@ def create_token_fetcher(conf_address: str, verify_certificates: bool = True, au
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
     with warnings.catch_warnings():
+        url: str
+        url_err = []
         if not verify_certificates:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
         try:
-            response = requests.get(conf_address, verify=verify_certificates and (conf_ca_filename or True))
+            if path:
+                paths = [path]
+            else:
+                paths = ["/ewb/auth", "/auth"]
+            for p in paths:
+                if port is None:
+                    url = f"https://{host}{p}"
+                else:
+                    url = f"https://{host}:{port}{p}"
+                response = requests.get(url, verify=verify_certificates and (conf_ca_filename or True))
+                if response.ok:
+                    break
+                else:
+                    url_err.append(url)
+
         except Exception as e:
             warnings.warn(str(e))
             warnings.warn("If RemoteDisconnected, this process may hang indefinetly.")
             raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
+
         if response.ok:
             try:
                 auth_config_json = response.json()
@@ -168,7 +188,7 @@ def create_token_fetcher(conf_address: str, verify_certificates: bool = True, au
                         ca_filename=auth_ca_filename
                     )
             except ValueError as e:
-                raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
+                raise ValueError(f"Expected JSON response from {url}, but got: {response.text}.", e)
         else:
-            raise ValueError(f"{conf_address} responded with error: {response.status_code} - {response.reason} {response.text}")
+            raise ValueError(f"{url_err} responded with error: {response.status_code} - {response.reason} {response.text}")
     return None
