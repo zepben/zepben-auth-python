@@ -5,9 +5,10 @@
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import random
+import re
 import string
 from unittest import mock
-from unittest.mock import ANY
+from unittest.mock import ANY, call
 
 import pytest
 
@@ -22,6 +23,7 @@ mock_refresh_token = ''.join(random.choices(string.ascii_lowercase, k=10))
 mock_issuer_protocol = ''.join(random.choices(string.ascii_lowercase, k=10))
 mock_auth_method = random.choice(list(AuthMethod))
 mock_verify_certificate = bool(random.getrandbits(1))
+
 
 class MockResponse:
     def __init__(self, json_data, status_code, reason="", text=""):
@@ -40,13 +42,13 @@ class MockResponse:
 @mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
     {"authType": "AUTH0", "audience": mock_audience, "issuer": "test_issuer"}, 200))
 def test_create_token_fetcher_success(mock_get):
-    token_fetcher = create_token_fetcher("https://testaddress")
+    token_fetcher = create_token_fetcher("testaddress")
     assert token_fetcher is not None
     assert token_fetcher.audience == mock_audience
     assert token_fetcher.issuer_domain == "test_issuer"
 
     mock_get.assert_called_once_with(
-        "https://testaddress",
+        "https://testaddress:443/ewb/auth",
         verify=True
     )
 
@@ -54,33 +56,36 @@ def test_create_token_fetcher_success(mock_get):
 @mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
     {"authType": "NONE", "audience": "", "issuer": ""}, 200))
 def test_create_token_fetcher_no_auth(mock_get):
-    token_fetcher = create_token_fetcher("https://testaddress")
+    token_fetcher = create_token_fetcher("testaddress")
     assert token_fetcher is None
 
     mock_get.assert_called_once_with(
-        "https://testaddress",
+        "https://testaddress:443/ewb/auth",
         verify=True
     )
 
 
 @mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 404))
 def test_create_token_fetcher_bad_response(mock_get):
-    with pytest.raises(ValueError, match=f"https://testaddress responded with error: 404 - "):
-        token_fetcher = create_token_fetcher("https://testaddress")
+    with pytest.raises(ValueError, match=re.escape("['https://testaddress:443/ewb/auth', 'https://testaddress:443/auth'] responded with error: 404 -  ")):
+        token_fetcher = create_token_fetcher("testaddress")
 
-    mock_get.assert_called_once_with(
-        "https://testaddress",
-        verify=True
+    mock_get.assert_has_calls(
+        [
+            call("https://testaddress:443/ewb/auth", verify=True),
+            call("https://testaddress:443/auth", verify=True)
+        ]
     )
 
 
-@mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 200, reason='test reason', text='test text'))
+@mock.patch('zepben.auth.client.token_fetcher.requests.get',
+            side_effect=lambda *args, **kwargs: MockResponse(None, 200, reason='test reason', text='test text'))
 def test_create_token_fetcher_missing_json(mock_get):
-    with pytest.raises(ValueError, match=f"Expected JSON response from https://testaddress, but got: test text."):
-        token_fetcher = create_token_fetcher("https://testaddress")
+    with pytest.raises(ValueError, match=f"Expected JSON response from https://testaddress:443/ewb/auth, but got: test text."):
+        token_fetcher = create_token_fetcher("testaddress")
 
     mock_get.assert_called_once_with(
-        "https://testaddress",
+        "https://testaddress:443/ewb/auth",
         verify=True
     )
 
