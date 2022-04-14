@@ -168,7 +168,7 @@ def create_token_fetcher(host: str, port: int = 443, path: Optional[str] = None,
                 if response.ok:
                     break
                 else:
-                    url_err.append(url)
+                    url_err.append(f"{url} responded with: {response.status_code} - {response.reason} {response.text}")
 
         except Exception as e:
             warnings.warn(str(e))
@@ -190,5 +190,5 @@ def create_token_fetcher(host: str, port: int = 443, path: Optional[str] = None,
             except ValueError as e:
                 raise ValueError(f"Expected JSON response from {url}, but got: {response.text}.", e)
         else:
-            raise ValueError(f"{url_err} responded with error: {response.status_code} - {response.reason} {response.text}")
+            raise ValueError("\n".join(url_err))
     return None
