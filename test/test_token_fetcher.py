@@ -67,7 +67,7 @@ def test_create_token_fetcher_no_auth(mock_get):
 
 @mock.patch('zepben.auth.client.token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(None, 404))
 def test_create_token_fetcher_bad_response(mock_get):
-    with pytest.raises(ValueError, match=re.escape("['https://testaddress:443/ewb/auth', 'https://testaddress:443/auth'] responded with error: 404 -  ")):
+    with pytest.raises(ValueError, match=re.escape("https://testaddress:443/ewb/auth responded with: 404 -  \nhttps://testaddress:443/auth responded with: 404 -  ")):
         token_fetcher = create_token_fetcher("testaddress")
 
     mock_get.assert_has_calls(
