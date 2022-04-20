@@ -1,5 +1,5 @@
 ##### Breaking Changes
-* `create_token_fetcher` now accepts a host, port, and conf_path rather than a conf_address.
+* None.
 
 ##### New Features
 * None.
