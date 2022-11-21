@@ -5,7 +5,7 @@
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 import warnings
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 import jwt
 import requests
 from dataclassy import dataclass
@@ -18,9 +18,15 @@ from zepben.auth.common.auth_method import AuthMethod
 
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher"]
 
+from zepben.auth.common.status_code import StatusCode
+
 
 @dataclass
 class ZepbenTokenFetcher(object):
+    """
+    Fetches access tokens from an authentication provider using the OAuth 2.0 protocol.
+    """
+
     audience: str
     """ Audience to use when requesting tokens """
 
@@ -29,9 +35,6 @@ class ZepbenTokenFetcher(object):
 
     auth_method: AuthMethod
     """ The authentication method used by the server """
-
-    verify_certificate: bool = True
-    """ Whether to verify the SSL certificate when making requests """
 
     issuer_protocol: str = "https"
     """ Protocol of the token issuer. You should not change this unless you are absolutely sure of what you are doing. Setting it to
@@ -46,9 +49,11 @@ class ZepbenTokenFetcher(object):
     refresh_request_data = {}
     """ Data to pass in refresh token requests. """
 
-    ca_filename: Optional[str] = None
-    """ Filename of certificate authority used to verify the source and integrity of tokens. The requests library will use the certify package for the list of
-        trusted certificates if this is None. Ignored if `verify_certificate` is False."""
+    verify: Union[bool, str] = True
+    """
+    Passed through to requests.post(). When this is a boolean, it determines whether or not to verify the HTTPS certificate of the OAUTH service.
+    When this is a string, it is used as the filename of the certificate truststore to use when verifying the OAUTH service.
+    """
 
     _access_token = None
     _refresh_token = None
@@ -78,96 +83,95 @@ class ZepbenTokenFetcher(object):
             # Just to give a friendly error if a token retrieval failed for a case we haven't handled.
             if not self._token_type or not self._access_token:
                 raise AuthException(
+                    StatusCode.UNKNOWN.value,
                     f"Token couldn't be retrieved from {construct_url(self.issuer_protocol, self.issuer_domain, self.token_path)} using configuration "
-                    f"{self.auth_method}, audience: {self.audience}, token issuer: {self.issuer_domain}")
+                    f"{self.auth_method}, audience: {self.audience}, token issuer: {self.issuer_domain}"
+                )
 
         return f"{self._token_type} {self._access_token}"
 
     def _fetch_token_auth0(self, use_refresh: bool = False):
+        if use_refresh:
+            self._refresh_request_data["refresh_token"] = self._refresh_token
+
         response = requests.post(
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
-            headers={"content-type": "application/x-www-form-urlencoded"},
+            headers={"content-type": "application/json"},
             data=self.refresh_request_data if use_refresh else self.token_request_data,
-            verify=self.verify_certificate and (self.ca_filename or True)
+            verify=self.verify
         )
 
         if not response.ok:
-            raise AuthException(f'Token fetch failed, Error was: {response.status_code} - {response.reason} {response.text}')
+            raise AuthException(response.status_code, f'Token fetch failed, Error was: {response.reason} {response.text}')
 
         try:
             data = response.json()
-        except ValueError as e:
-            raise AuthException(f'Response did not contain expected JSON - response was: {response.text}', e)
+        except ValueError:
+            raise AuthException(response.status_code, f'Response did not contain expected JSON - response was: {response.text}')
 
         if "error" in data or "access_token" not in data:
-            raise AuthException(f'{data.get("error", "Access Token absent in token response")} - {data.get("error_description", f"Response was: {data}")}')
+            raise AuthException(
+                response.status_code,
+                f'{data.get("error", "Access Token absent in token response")} - {data.get("error_description", f"Response was: {data}")}'
+            )
 
         self._token_type = data["token_type"]
         self._access_token = data["access_token"]
         self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, options={"verify_signature": False})['exp'])
-        self._refresh_token = data.get("refresh_token", None)
+
+        if use_refresh:
+            self._refresh_token = data.get("refresh_token", None)
 
 
-def create_token_fetcher(host: str, port: int = 443, path: Optional[str] = None, verify_certificates: bool = True, auth_type_field: str = 'authType',
-                         audience_field: str = 'audience',
-                         issuer_domain_field: str = 'issuer', conf_ca_filename: Optional[str] = None,
-                         auth_ca_filename: Optional[str] = None) -> Optional[ZepbenTokenFetcher]:
+def create_token_fetcher(
+    conf_address: str,
+    verify_conf: Union[bool, str] = True,
+    verify_auth: Union[bool, str] = True,
+    auth_type_field: str = "authType",
+    audience_field: str = "audience",
+    issuer_domain_field: str = "issuer"
+) -> Optional[ZepbenTokenFetcher]:
     """
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
 
-    :param host: The host to connect to.
-    :param port: The gRPC port for host.
-    :param path: The path for the auth configuration endpoint. "Defaults to checking /auth and /ewb/auth"
-    :param verify_certificates: Whether to verify the certificate when making HTTPS requests. Note you should only use a trusted server
-        and never set this to False in a production environment.
+    :param conf_address: The url to retrieve the authentication config from.
+    :param verify_conf: Passed through to requests.get() when retrieving the authentication config. When this is a boolean, it determines whether to verify
+                        the HTTPS certificate of `conf_address`. When this is a string, it is used as the filename of the certificate truststore to use
+                        when verifying `conf_address`.
+    :param verify_auth: Passed through to the resulting :class:`ZepbenTokenFetcher`.
     :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
     :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
     :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
-    :param conf_ca_filename: An optional filename of the certificate authority used to verify configuration response. Ignored if `verify_certificates` is False.
-    :param auth_ca_filename: An optional filename of the certificate authority used to verify auth responses. Ignored if `verify_certificates` is False.
 
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
     with warnings.catch_warnings():
-        url: str
-        url_err = []
-        if not verify_certificates:
+        if not verify_conf:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
         try:
-            if path:
-                paths = [path]
+            response = requests.get(conf_address, verify=verify_conf)
+            if response.ok:
+                try:
+                    auth_config_json = response.json()
+                    auth_method = AuthMethod(auth_config_json[auth_type_field])
+                    if auth_method is not AuthMethod.NONE:
+                        return ZepbenTokenFetcher(
+                            audience=auth_config_json[audience_field],
+                            issuer_domain=auth_config_json[issuer_domain_field],
+                            auth_method=auth_method,
+                            verify=verify_auth
+                        )
+                except ValueError as e:
+                    raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
             else:
-                paths = ["/ewb/auth", "/auth"]
-            for p in paths:
-                if port is None:
-                    url = f"https://{host}{p}"
-                else:
-                    url = f"https://{host}:{port}{p}"
-                response = requests.get(url, verify=verify_certificates and (conf_ca_filename or True))
-                if response.ok:
-                    break
-                else:
-                    url_err.append(f"{url} responded with: {response.status_code} - {response.reason} {response.text}")
+                raise AuthException(
+                    response.status_code,
+                    f"{conf_address} responded with: {response.status_code} - {response.reason} {response.text}"
+                )
 
         except Exception as e:
             warnings.warn(str(e))
-            warnings.warn("If RemoteDisconnected, this process may hang indefinetly.")
+            warnings.warn("If RemoteDisconnected, this process may hang indefinitely.")
             raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
 
-        if response.ok:
-            try:
-                auth_config_json = response.json()
-                auth_method = AuthMethod(auth_config_json[auth_type_field])
-                if auth_method is not AuthMethod.NONE:
-                    return ZepbenTokenFetcher(
-                        audience=auth_config_json[audience_field],
-                        issuer_domain=auth_config_json[issuer_domain_field],
-                        auth_method=auth_method,
-                        verify_certificate=verify_certificates,
-                        ca_filename=auth_ca_filename
-                    )
-            except ValueError as e:
-                raise ValueError(f"Expected JSON response from {url}, but got: {response.text}.", e)
-        else:
-            raise ValueError("\n".join(url_err))
     return None

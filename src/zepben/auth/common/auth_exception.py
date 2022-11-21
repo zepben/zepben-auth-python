@@ -8,4 +8,9 @@ __all__ = ["AuthException"]
 
 
 class AuthException(Exception):
-    pass
+
+    status_code: int
+
+    def __init__(self, status_code: int, *args, **kwargs):
+        super(*args, **kwargs)
+        self.status_code = status_code

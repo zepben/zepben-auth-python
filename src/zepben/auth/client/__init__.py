@@ -6,4 +6,4 @@
 
 __all__ = ["ZepbenTokenFetcher", "AuthMethod", "create_token_fetcher"]
 
-from zepben.auth.client.token_fetcher import ZepbenTokenFetcher, AuthMethod, create_token_fetcher
+from zepben.auth.client.zepben_token_fetcher import ZepbenTokenFetcher, AuthMethod, create_token_fetcher
