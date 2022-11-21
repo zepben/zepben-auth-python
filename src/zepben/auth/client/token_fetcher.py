@@ -5,7 +5,6 @@
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 import warnings
 from datetime import datetime
-from enum import Enum
 from typing import Optional
 import jwt
 import requests
@@ -13,31 +12,11 @@ from dataclassy import dataclass
 from urllib3.exceptions import InsecureRequestWarning
 
 from zepben.auth.client.util import construct_url
+from zepben.auth.common.auth_exception import AuthException
+from zepben.auth.common.auth_method import AuthMethod
 
 
-__all__ = ["ZepbenTokenFetcher", "AuthMethod", "AuthException", "create_token_fetcher"]
-
-_AUTH_HEADER_KEY = 'authorization'
-
-
-class AuthException(Exception):
-    pass
-
-
-class AuthMethod(Enum):
-    """
-    An enum class that represents the different authentication methods that could be returned from the server's
-    ewb/config/auth endpoint.
-    """
-    @classmethod
-    def _missing_(cls, value: str):
-        for member in cls:
-            if member.value == value.upper():
-                return member
-
-    NONE = "NONE"
-    SELF = "self"
-    AUTH0 = "AUTH0"
+__all__ = ["ZepbenTokenFetcher", "create_token_fetcher"]
 
 
 @dataclass
