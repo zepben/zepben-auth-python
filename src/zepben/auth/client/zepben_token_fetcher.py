@@ -92,7 +92,7 @@ class ZepbenTokenFetcher(object):
 
     def _fetch_token_auth0(self, use_refresh: bool = False):
         if use_refresh:
-            self._refresh_request_data["refresh_token"] = self._refresh_token
+            self.refresh_request_data["refresh_token"] = self._refresh_token
 
         response = requests.post(
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
@@ -148,8 +148,14 @@ def create_token_fetcher(
     with warnings.catch_warnings():
         if not verify_conf:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
+
         try:
             response = requests.get(conf_address, verify=verify_conf)
+        except Exception as e:
+            warnings.warn(str(e))
+            warnings.warn("If RemoteDisconnected, this process may hang indefinitely.")
+            raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
+        else:
             if response.ok:
                 try:
                     auth_config_json = response.json()
@@ -162,16 +168,11 @@ def create_token_fetcher(
                             verify=verify_auth
                         )
                 except ValueError as e:
-                    raise ValueError(f"Expected JSON response from {conf_address}, but got: {response.text}.", e)
+                    raise AuthException(response.status_code, f"Expected JSON response from {conf_address}, but got: {response.text}.")
             else:
                 raise AuthException(
                     response.status_code,
-                    f"{conf_address} responded with: {response.status_code} - {response.reason} {response.text}"
+                    f"{conf_address} responded with: {response.reason} {response.text}"
                 )
-
-        except Exception as e:
-            warnings.warn(str(e))
-            warnings.warn("If RemoteDisconnected, this process may hang indefinitely.")
-            raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
 
     return None
