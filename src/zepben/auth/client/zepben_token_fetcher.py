@@ -33,7 +33,7 @@ class ZepbenTokenFetcher(object):
     issuer_domain: str
     """ The domain of the token issuer. """
 
-    auth_method: AuthMethod
+    auth_method: AuthMethod = AuthMethod.OAUTH
     """ The authentication method used by the server """
 
     issuer_protocol: str = "https"
