@@ -5,4 +5,6 @@
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 from zepben.auth import construct_url
 
-assert construct_url("htcpcp", "java", )
+def test_construct_url():
+    assert construct_url("htcpcp", "coffeepot", "/espresso", 1234) == "htcpcp://coffeepot:1234/espresso"
+    assert construct_url("https", "example.com", "/") == "https://example.com/"
