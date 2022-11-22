@@ -11,10 +11,11 @@ from zepben.auth.common.status_code import StatusCode
 
 
 def test_status_code():
-    assert len(StatusCode) == 6
+    assert len(StatusCode) == 5
+
     assert StatusCode.OK.value == 200
     assert StatusCode.MALFORMED_TOKEN.value == 400
     assert StatusCode.UNAUTHENTICATED.value == 403
-    assert StatusCode.PERMISSION_DENIED.value == 403
+    assert StatusCode.PERMISSION_DENIED is StatusCode.UNAUTHENTICATED
     assert StatusCode.NOT_FOUND.value == 404
     assert StatusCode.UNKNOWN.value == 500
