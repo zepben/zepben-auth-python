@@ -97,7 +97,7 @@ class ZepbenTokenFetcher(object):
         response = requests.post(
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
             headers={"content-type": "application/json"},
-            data=self.refresh_request_data if use_refresh else self.token_request_data,
+            json=self.refresh_request_data if use_refresh else self.token_request_data,
             verify=self.verify
         )
 
@@ -167,7 +167,7 @@ def create_token_fetcher(
                             auth_method=auth_method,
                             verify=verify_auth
                         )
-                except ValueError as e:
+                except ValueError:
                     raise AuthException(response.status_code, f"Expected JSON response from {conf_address}, but got: {response.text}.")
             else:
                 raise AuthException(
