@@ -117,7 +117,7 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
-            data=token_fetcher.token_request_data,
+            json=token_fetcher.token_request_data,
             verify=mock_verify_certificate
         )  # Appropriate-looking password grant request was made to the issuer
 
@@ -142,7 +142,7 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
-            data=token_fetcher.token_request_data,
+            json=token_fetcher.token_request_data,
             verify=mock_verify_certificate
         )
 
@@ -165,7 +165,7 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
-            data=token_fetcher.token_request_data,
+            json=token_fetcher.token_request_data,
             verify=mock_verify_certificate
         )
 
@@ -189,7 +189,7 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
-            data=token_fetcher.token_request_data,
+            json=token_fetcher.token_request_data,
             verify=mock_verify_certificate
         )
 
@@ -213,7 +213,7 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
-            data=token_fetcher.token_request_data,
+            json=token_fetcher.token_request_data,
             verify=mock_verify_certificate
         )
 
@@ -237,6 +237,6 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
-            data=token_fetcher.refresh_request_data,
+            json=token_fetcher.refresh_request_data,
             verify=mock_verify_certificate
         )
