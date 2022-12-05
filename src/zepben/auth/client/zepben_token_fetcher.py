@@ -18,8 +18,6 @@ from zepben.auth.common.auth_method import AuthMethod
 
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher"]
 
-from zepben.auth.common.status_code import StatusCode
-
 
 @dataclass
 class ZepbenTokenFetcher(object):
@@ -82,8 +80,7 @@ class ZepbenTokenFetcher(object):
 
             # Just to give a friendly error if a token retrieval failed for a case we haven't handled.
             if not self._token_type or not self._access_token:
-                raise AuthException(
-                    StatusCode.UNKNOWN.value,
+                raise Exception(
                     f"Token couldn't be retrieved from {construct_url(self.issuer_protocol, self.issuer_domain, self.token_path)} using configuration "
                     f"{self.auth_method}, audience: {self.audience}, token issuer: {self.issuer_domain}"
                 )

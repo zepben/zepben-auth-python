@@ -9,4 +9,3 @@ from zepben.auth.client.util import *
 from zepben.auth.client.zepben_token_fetcher import *
 from zepben.auth.common.auth_exception import *
 from zepben.auth.common.auth_method import *
-from zepben.auth.common.status_code import *
