@@ -11,7 +11,7 @@ from zepben.auth import ZepbenTokenFetcher, AuthMethod, StatusCode, ...
 * Replaced several exceptions with an `AuthException` to specify the status code of the response.
 
 ##### New Features
-* Added enum for gRPC status codes: `StatusCode` in `zepben.auth.common.status_code`.
+* None.
 
 ##### Enhancements
 * None.
