@@ -1,3 +1,4 @@
+## [0.10.0] - UNRELEASED
 ##### Breaking Changes
 * Public classes and functions are now imported through `zepben.auth` rather than `zepben.auth.client`:
 ```python
