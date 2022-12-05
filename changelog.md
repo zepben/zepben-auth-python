@@ -1,7 +1,7 @@
 ##### Breaking Changes
 * Public classes and functions are now imported through `zepben.auth` rather than `zepben.auth.client`:
 ```python
-from zepben.auth import ZepbenTokenFetcher, AuthMethod, StatusCode, ...
+from zepben.auth import ZepbenTokenFetcher, AuthMethod, ...
 ```
 * Renamed `ZepbenTokenFetcher`'s module from `token_fetcher` to `zepben_token_fetcher`.
 * Refactored `AuthException` to its own module - `auth_exception` in `zepben.auth.common`.
