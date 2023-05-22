@@ -136,6 +136,7 @@ class ZepbenTokenFetcher(object):
         })
         return self.fetch_token()
 
+
 def create_token_fetcher(
     conf_address: str,
     verify_conf: Union[bool, str] = True,
