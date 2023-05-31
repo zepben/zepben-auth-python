@@ -12,7 +12,7 @@ from zepben.auth import ZepbenTokenFetcher, AuthMethod, ...
 * Replaced several exceptions with an `AuthException` to specify the status code of the response.
 
 ##### New Features
-* None.
+* Create a helper function to fetch an api token for graphql end point
 
 ##### Enhancements
 * None.

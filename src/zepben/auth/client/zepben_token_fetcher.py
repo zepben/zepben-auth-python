@@ -119,6 +119,23 @@ class ZepbenTokenFetcher(object):
         if use_refresh:
             self._refresh_token = data.get("refresh_token", None)
 
+    def fetch_graphql_token(self, client_id, username, password) -> str:
+        self.token_request_data.update({
+            'client_id': client_id,
+            'scope': 'offline_access openid profile email0'
+        })
+        self.refresh_request_data.update({
+            "grant_type": "refresh_token",
+            'client_id': client_id,
+            'scope': 'offline_access openid profile email0'
+        })
+        self.token_request_data.update({
+            'grant_type': 'password',
+            'username': username,
+            'password': password
+        })
+        return self.fetch_token()
+
 
 def create_token_fetcher(
     conf_address: str,
