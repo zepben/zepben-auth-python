@@ -16,7 +16,7 @@ from zepben.auth.common.auth_exception import AuthException
 from zepben.auth.common.auth_method import AuthMethod
 
 
-__all__ = ["ZepbenTokenFetcher", "create_token_fetcher"]
+__all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher"]
 
 
 @dataclass
@@ -119,23 +119,6 @@ class ZepbenTokenFetcher(object):
         if use_refresh:
             self._refresh_token = data.get("refresh_token", None)
 
-    def fetch_graphql_token(self, client_id, username, password) -> str:
-        self.token_request_data.update({
-            'client_id': client_id,
-            'scope': 'offline_access openid profile email0'
-        })
-        self.refresh_request_data.update({
-            "grant_type": "refresh_token",
-            'client_id': client_id,
-            'scope': 'offline_access openid profile email0'
-        })
-        self.token_request_data.update({
-            'grant_type': 'password',
-            'username': username,
-            'password': password
-        })
-        return self.fetch_token()
-
 
 def create_token_fetcher(
     conf_address: str,
@@ -190,3 +173,32 @@ def create_token_fetcher(
                 )
 
     return None
+
+
+def get_token_fetcher(audience: str, issuer_domain: str, client_id: str, username: str, password: str) -> ZepbenTokenFetcher:
+    """
+    Create a token fetcher for the given audience and client, using username and password.
+
+    :param audience: The OAuth audience for this client.
+    :param issuer_domain: The domain of the issuer - e.g zepben.au.auth0.com
+    :param client_id: The client id to use.
+    :param username: The user to log in as. Must have access to the provided audience.
+    :param password: The corresponding password for the user.
+    """
+    token_fetcher = ZepbenTokenFetcher(audience=audience, issuer_domain=issuer_domain, auth_method=AuthMethod.OAUTH)
+    token_fetcher.token_request_data.update({
+        'client_id': client_id,
+        'scope': 'offline_access openid profile email0'
+    })
+    token_fetcher.refresh_request_data.update({
+        "grant_type": "refresh_token",
+        'client_id': client_id,
+        'scope': 'offline_access openid profile email0'
+    })
+    token_fetcher.token_request_data.update({
+        'grant_type': 'password',
+        'username': username,
+        'password': password
+    })
+
+    return token_fetcher

@@ -10,7 +10,7 @@ setup(
     description="Utilities for authenticating to the Evolve App Server and Energy Workbench Server",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://bitbucket.org/zepben/zepben-auth-python",
+    url="https://github.com/zepben/zepben-auth-python",
     author="Ramon Bouckaert",
     author_email="ramon.bouckaert@zepben.com",
     package_dir={"": "src"},
