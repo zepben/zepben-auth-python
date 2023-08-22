@@ -14,6 +14,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from zepben.auth.client.util import construct_url
 from zepben.auth.common.auth_exception import AuthException
 from zepben.auth.common.auth_method import AuthMethod
+from zepben.auth.common.auth_provider import AuthProvider
 
 
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher"]
@@ -62,7 +63,7 @@ class ZepbenTokenFetcher(object):
         self.token_request_data["audience"] = self.audience
         self.refresh_request_data["audience"] = self.audience
 
-    def fetch_token(self) -> str:
+    def fetch_token(self, provider: AuthProvider=AuthProvider.AUTH0) -> str:
         """
         Returns a JWT access token and its type in the form of '<type> <3 part JWT>', retrieved from the configured OAuth2 token provider.
         Throws AuthException if an access token request fails.
@@ -71,12 +72,12 @@ class ZepbenTokenFetcher(object):
             # Stored token has expired, try to refresh
             self._access_token = None
             if self._refresh_token:
-                self._fetch_token_auth0(True)
+                self._fetch_token(provider, True)
 
             if self._access_token is None:
                 # If using the refresh token did not work for any reason, self._access_token will still be None.
                 # and thus we must try get a fresh access token using credentials instead.
-                self._fetch_token_auth0()
+                self._fetch_token(provider)
 
             # Just to give a friendly error if a token retrieval failed for a case we haven't handled.
             if not self._token_type or not self._access_token:
@@ -87,19 +88,25 @@ class ZepbenTokenFetcher(object):
 
         return f"{self._token_type} {self._access_token}"
 
-    def _fetch_token_auth0(self, use_refresh: bool = False):
-        if use_refresh:
+    def _fetch_token(self, provider: AuthProvider, refresh: bool = False):
+        if refresh:
             self.refresh_request_data["refresh_token"] = self._refresh_token
 
-        response = requests.post(
-            construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
-            headers={"content-type": "application/json"},
-            json=self.refresh_request_data if use_refresh else self.token_request_data,
-            verify=self.verify
-        )
+        response: requests.Response
+        if provider == AuthProvider.AUTH0:
+            response = self._fetch_token_auth0(refresh)
+        elif provider == AuthProvider.AZURE:
+            response = self._fetch_token_azure(refresh)
+        else:
+            raise UserWarning(f"Unsupported provider type ${provider}")
 
         if not response.ok:
             raise AuthException(response.status_code, f'Token fetch failed, Error was: {response.reason} {response.text}')
+
+        try:
+            data = response.json()
+        except ValueError:
+            raise AuthException(response.status_code, f'Response did not contain expected JSON - response was: {response.text}')
 
         try:
             data = response.json()
@@ -116,9 +123,26 @@ class ZepbenTokenFetcher(object):
         self._access_token = data["access_token"]
         self._token_expiry = datetime.fromtimestamp(jwt.decode(self._access_token, options={"verify_signature": False})['exp'])
 
-        if use_refresh:
+        if refresh:
             self._refresh_token = data.get("refresh_token", None)
 
+
+    def _fetch_token_azure(self, refresh: bool = False) -> requests.Response:
+        return requests.post(
+            construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+            data=self.refresh_request_data if refresh else self.token_request_data,
+            verify=self.verify
+        )
+
+
+    def _fetch_token_auth0(self, refresh: bool = False) -> requests.Response:
+        return requests.post(
+            construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
+            headers={"content-type": "application/json"},
+            json=self.refresh_request_data if refresh else self.token_request_data,
+            verify=self.verify
+        )
 
 def create_token_fetcher(
     conf_address: str,

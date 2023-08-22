@@ -12,7 +12,7 @@ from unittest.mock import ANY
 
 import pytest
 
-from zepben.auth import ZepbenTokenFetcher, AuthException, create_token_fetcher, AuthMethod
+from zepben.auth import ZepbenTokenFetcher, AuthException, create_token_fetcher, AuthMethod, AuthProvider
 
 TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZha2VraWQifQ.eyJpc3MiOiJodHRwczovL2lzc3Vlci8iLCJzdWIiOiJmYWtlIiwiYXVkIjoiaHR0cHM6Ly9mYWtlLWF1ZC8iLCJpYXQiOjE1OTE4MzQxNzksImV4cCI6OTU5MTkyMDU3OSwiYXpwIjoid2U5ZDNSME5jTUNWckpDZ2ROSWVmWWx6aHo2VE9SaGciLCJzY29wZSI6IndyaXRlOm5ldHdvcmsgcmVhZDpuZXR3b3JrIHdyaXRlOm1ldHJpY3MgcmVhZDpld2IiLCJndHkiOiJjbGllbnQtY3JlZGVudGlhbHMiLCJwZXJtaXNzaW9ucyI6WyJ3cml0ZTpuZXR3b3JrIiwicmVhZDpuZXR3b3JrIiwid3JpdGU6bWV0cmljcyIsInJlYWQ6ZXdiIl19.ay_YTwRsfcNzVdmQ4EgmuNMMypfZIIc8K9dCCtLqUmUJDtE7NUuKaVAmGDdmW1J-ngm0UsH4k6B5QpPIJnLIROpdDf7aRzdE9hNFuSHR3arpyCzmO2-TiFDZLFXQjHf0Q-BaxGoXLQBupGYuQaG_3flaLPB3hPV0nqPoBTIoJgG8n2w0Uo2tePe_y2Blqco1sK2wElwyMlYc-UuTyFSvwKlpSXYmO4ppVmbAa9lS2ley6lcv2TwXLCk0KfIIH2E5OBvJHevZqYEzFBAeLCnahKoWxexsVvEfZr40Nhc6oPRT5yJfHRBnCrDnO1fE96rqguQpsDG-HWCtd2GkpnAXNg"
 
@@ -114,6 +114,29 @@ class TestZepbenTokenFetcher:
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
             headers=ANY,
             json=token_fetcher.token_request_data,
+            verify=mock_verify_certificate
+        )  # Appropriate-looking password grant request was made to the issuer
+
+    @mock.patch('zepben.auth.client.zepben_token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(
+        {"access_token": TOKEN, "refresh_token": mock_refresh_token, "token_type": "Bearer"}, 200))
+    def test_fetch_token_azure_successful(self, mock_post):
+        token_fetcher = ZepbenTokenFetcher(
+            audience=mock_audience,
+            issuer_domain=mock_auth0_issuer_domain,
+            auth_method=mock_auth_method,
+            verify=mock_verify_certificate,
+            issuer_protocol=mock_issuer_protocol,
+            token_path="/fake/path"
+        )
+
+        mock_post.assert_not_called()  # POST request is not made before get_token() is called
+
+        assert f"Bearer {TOKEN}" == token_fetcher.fetch_token(provider=AuthProvider.AZURE)  # Token from response payload is returned
+
+        mock_post.assert_called_once_with(
+            f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",
+            headers=ANY,
+            data=token_fetcher.token_request_data,
             verify=mock_verify_certificate
         )  # Appropriate-looking password grant request was made to the issuer
 
