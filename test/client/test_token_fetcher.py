@@ -122,6 +122,7 @@ class TestZepbenTokenFetcher:
     def test_fetch_token_azure_successful(self, mock_post):
         token_fetcher = ZepbenTokenFetcher(
             audience=mock_audience,
+            provider=AuthProvider.AZURE,
             issuer_domain=mock_auth0_issuer_domain,
             auth_method=mock_auth_method,
             verify=mock_verify_certificate,
@@ -131,7 +132,7 @@ class TestZepbenTokenFetcher:
 
         mock_post.assert_not_called()  # POST request is not made before get_token() is called
 
-        assert f"Bearer {TOKEN}" == token_fetcher.fetch_token(provider=AuthProvider.AZURE)  # Token from response payload is returned
+        assert f"Bearer {TOKEN}" == token_fetcher.fetch_token()  # Token from response payload is returned
 
         mock_post.assert_called_once_with(
             f"{mock_issuer_protocol}://{mock_auth0_issuer_domain}/fake/path",

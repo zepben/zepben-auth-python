@@ -19,7 +19,6 @@ from zepben.auth.common.auth_provider import AuthProvider
 
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher"]
 
-
 @dataclass
 class ZepbenTokenFetcher(object):
     """
@@ -28,6 +27,9 @@ class ZepbenTokenFetcher(object):
 
     audience: str
     """ Audience to use when requesting tokens """
+
+    provider: AuthProvider
+    """ The token issuer. """
 
     issuer_domain: str
     """ The domain of the token issuer. """
@@ -63,7 +65,7 @@ class ZepbenTokenFetcher(object):
         self.token_request_data["audience"] = self.audience
         self.refresh_request_data["audience"] = self.audience
 
-    def fetch_token(self, provider: AuthProvider=AuthProvider.AUTH0) -> str:
+    def fetch_token(self) -> str:
         """
         Returns a JWT access token and its type in the form of '<type> <3 part JWT>', retrieved from the configured OAuth2 token provider.
         Throws AuthException if an access token request fails.
@@ -72,12 +74,12 @@ class ZepbenTokenFetcher(object):
             # Stored token has expired, try to refresh
             self._access_token = None
             if self._refresh_token:
-                self._fetch_token(provider, True)
+                self._fetch_token(True)
 
             if self._access_token is None:
                 # If using the refresh token did not work for any reason, self._access_token will still be None.
                 # and thus we must try get a fresh access token using credentials instead.
-                self._fetch_token(provider)
+                self._fetch_token()
 
             # Just to give a friendly error if a token retrieval failed for a case we haven't handled.
             if not self._token_type or not self._access_token:
@@ -88,17 +90,17 @@ class ZepbenTokenFetcher(object):
 
         return f"{self._token_type} {self._access_token}"
 
-    def _fetch_token(self, provider: AuthProvider, refresh: bool = False):
+    def _fetch_token(self, refresh: bool = False):
         if refresh:
             self.refresh_request_data["refresh_token"] = self._refresh_token
 
         response: requests.Response
-        if provider == AuthProvider.AUTH0:
+        if self.provider == AuthProvider.AUTH0:
             response = self._fetch_token_auth0(refresh)
-        elif provider == AuthProvider.AZURE:
+        elif self.provider == AuthProvider.AZURE:
             response = self._fetch_token_azure(refresh)
         else:
-            raise UserWarning(f"Unsupported provider type ${provider}")
+            raise UserWarning(f"Unsupported provider type ${self.provider}")
 
         if not response.ok:
             raise AuthException(response.status_code, f'Token fetch failed, Error was: {response.reason} {response.text}')
@@ -128,6 +130,11 @@ class ZepbenTokenFetcher(object):
 
 
     def _fetch_token_azure(self, refresh: bool = False) -> requests.Response:
+
+        # Make sure we do the right thing for Azure
+        self.token_request_data.update({
+           'grant_type': 'client_credentials',
+        })
         return requests.post(
             construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
             headers={"content-type": "application/x-www-form-urlencoded"},
@@ -161,8 +168,8 @@ def create_token_fetcher(
                         when verifying `conf_address`.
     :param verify_auth: Passed through to the resulting :class:`ZepbenTokenFetcher`.
     :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
-    :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
-    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.audience`.
+    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.issuer_domain`.
 
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
@@ -182,9 +189,19 @@ def create_token_fetcher(
                     auth_config_json = response.json()
                     auth_method = AuthMethod(auth_config_json[auth_type_field])
                     if auth_method is not AuthMethod.NONE:
+                        tenant = auth_config_json["azure_tenant"]
+                        # Currently we only support Auth0 and Azure, so...
+                        if tenant != "":
+                            provider=AuthProvider.AZURE
+                            issuer_domain="https://login.microsoftonline.com/$tenant"
+                        else:
+                            provider=AuthProvider.AUTH0
+                            issuer_domain=auth_config_json[issuer_domain_field]
+
                         return ZepbenTokenFetcher(
+                            provider=provider,
                             audience=auth_config_json[audience_field],
-                            issuer_domain=auth_config_json[issuer_domain_field],
+                            issuer_domain=issuer_domain,
                             auth_method=auth_method,
                             verify=verify_auth
                         )
@@ -212,14 +229,7 @@ def get_token_fetcher(audience: str, issuer_domain: str, client_id: str, usernam
     token_fetcher = ZepbenTokenFetcher(audience=audience, issuer_domain=issuer_domain, auth_method=AuthMethod.OAUTH)
     token_fetcher.token_request_data.update({
         'client_id': client_id,
-        'scope': 'offline_access openid profile email0'
-    })
-    token_fetcher.refresh_request_data.update({
-        "grant_type": "refresh_token",
-        'client_id': client_id,
-        'scope': 'offline_access openid profile email0'
-    })
-    token_fetcher.token_request_data.update({
+        'scope': 'offline_access openid profile email0',
         'grant_type': 'password',
         'username': username,
         'password': password
