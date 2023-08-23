@@ -14,7 +14,6 @@ from urllib3.exceptions import InsecureRequestWarning
 from zepben.auth.client.util import construct_url
 from zepben.auth.common.auth_exception import AuthException
 from zepben.auth.common.auth_method import AuthMethod
-from zepben.auth.common.auth_provider import AuthProvider
 
 
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher"]
@@ -27,9 +26,6 @@ class ZepbenTokenFetcher(object):
 
     audience: str
     """ Audience to use when requesting tokens """
-
-    provider: AuthProvider
-    """ The token issuer. """
 
     issuer_domain: str
     """ The domain of the token issuer. """
@@ -94,13 +90,12 @@ class ZepbenTokenFetcher(object):
         if refresh:
             self.refresh_request_data["refresh_token"] = self._refresh_token
 
+        # We currently only support AZURE and Auth0
         response: requests.Response
-        if self.provider == AuthProvider.AUTH0:
-            response = self._fetch_token_auth0(refresh)
-        elif self.provider == AuthProvider.AZURE:
+        if self.auth_method == AuthMethod.AZURE:
             response = self._fetch_token_azure(refresh)
         else:
-            raise UserWarning(f"Unsupported provider type ${self.provider}")
+            response = self._fetch_token_auth0(refresh)
 
         if not response.ok:
             raise AuthException(response.status_code, f'Token fetch failed, Error was: {response.reason} {response.text}')
@@ -189,19 +184,9 @@ def create_token_fetcher(
                     auth_config_json = response.json()
                     auth_method = AuthMethod(auth_config_json[auth_type_field])
                     if auth_method is not AuthMethod.NONE:
-                        tenant = auth_config_json["azure_tenant"]
-                        # Currently we only support Auth0 and Azure, so...
-                        if tenant != "":
-                            provider=AuthProvider.AZURE
-                            issuer_domain="https://login.microsoftonline.com/$tenant"
-                        else:
-                            provider=AuthProvider.AUTH0
-                            issuer_domain=auth_config_json[issuer_domain_field]
-
                         return ZepbenTokenFetcher(
-                            provider=provider,
                             audience=auth_config_json[audience_field],
-                            issuer_domain=issuer_domain,
+                            issuer_domain=auth_config_json[issuer_domain_field],
                             auth_method=auth_method,
                             verify=verify_auth
                         )
