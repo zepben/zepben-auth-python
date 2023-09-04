@@ -222,9 +222,17 @@ def get_token_fetcher(audience: str, issuer_domain: str, client_id: str, usernam
     :param password: The corresponding password for the user.
     """
     token_fetcher = ZepbenTokenFetcher(audience=audience, issuer_domain=issuer_domain, auth_method=AuthMethod.OAUTH)
+
     token_fetcher.token_request_data.update({
         'client_id': client_id,
-        'scope': 'offline_access openid profile email0',
+        'scope': 'offline_access openid profile email0'
+    })
+    token_fetcher.refresh_request_data.update({
+        "grant_type": "refresh_token",
+        'client_id': client_id,
+        'scope': 'offline_access openid profile email0'
+    })
+    token_fetcher.token_request_data.update({
         'grant_type': 'password',
         'username': username,
         'password': password
