@@ -40,7 +40,7 @@ class MockResponse:
 
 
 @mock.patch('zepben.auth.client.zepben_token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
-    {"authType": "OAUTH", "audience": mock_audience, "issuer": "test_issuer"}, 200))
+    {"authType": "OAUTH", "audience": mock_audience, "issuerDomain": "test_issuer", "tokenPath": "/oath/token"}, 200))
 def test_create_token_fetcher_success(mock_get):
     token_fetcher = create_token_fetcher("https://testaddress:443/ewb/auth")
     assert token_fetcher is not None
@@ -54,7 +54,7 @@ def test_create_token_fetcher_success(mock_get):
 
 
 @mock.patch('zepben.auth.client.zepben_token_fetcher.requests.get', side_effect=lambda *args, **kwargs: MockResponse(
-    {"authType": "NONE", "audience": "", "issuer": ""}, 200))
+    {"authType": "NONE", "audience": "", "issuerDomain": ""}, 200))
 def test_create_token_fetcher_no_auth(mock_get):
     token_fetcher = create_token_fetcher("https://testaddress:443/ewb/auth")
     assert token_fetcher is None

@@ -61,6 +61,10 @@ class ZepbenTokenFetcher(object):
         self.token_request_data["audience"] = self.audience
         self.refresh_request_data["audience"] = self.audience
 
+        # Azure is using that as a scope, not "audience"
+        self.token_request_data["scope"] = self.audience + "/.default"
+        self.refresh_request_data["scope"] = self.audience + "/.default"
+
     def fetch_token(self) -> str:
         """
         Returns a JWT access token and its type in the form of '<type> <3 part JWT>', retrieved from the configured OAuth2 token provider.
@@ -126,6 +130,9 @@ class ZepbenTokenFetcher(object):
 
     def _fetch_token_azure(self, refresh: bool = False) -> requests.Response:
 
+        if refresh:
+            raise UserWarning("At the moment Azure auth doesn't support refresh tokens. Use without refresh")
+
         # Make sure we do the right thing for Azure
         self.token_request_data.update({
            'grant_type': 'client_credentials',
@@ -152,7 +159,8 @@ def create_token_fetcher(
     verify_auth: Union[bool, str] = True,
     auth_type_field: str = "authType",
     audience_field: str = "audience",
-    issuer_domain_field: str = "issuer"
+    issuer_domain_field: str = "issuerDomain",
+    token_path_field: str = "tokenPath"
 ) -> Optional[ZepbenTokenFetcher]:
     """
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
@@ -162,9 +170,10 @@ def create_token_fetcher(
                         the HTTPS certificate of `conf_address`. When this is a string, it is used as the filename of the certificate truststore to use
                         when verifying `conf_address`.
     :param verify_auth: Passed through to the resulting :class:`ZepbenTokenFetcher`.
-    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.auth_method`.
+    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.authType`.
     :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.audience`.
-    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.issuer_domain`.
+    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.issuerDomain`.
+    :param token_path_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.tokenPath`.
 
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
@@ -187,6 +196,7 @@ def create_token_fetcher(
                         return ZepbenTokenFetcher(
                             audience=auth_config_json[audience_field],
                             issuer_domain=auth_config_json[issuer_domain_field],
+                            token_path=auth_config_json[token_path_field],
                             auth_method=auth_method,
                             verify=verify_auth
                         )
