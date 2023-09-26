@@ -95,6 +95,7 @@ class ZepbenTokenFetcher(object):
             self.refresh_request_data["refresh_token"] = self._refresh_token
 
         # We currently only support AZURE and Auth0
+        # TODO: convert this into a callback passed into __init__ that fetches the token.
         response: requests.Response
         if self.auth_method == AuthMethod.AZURE:
             response = self._fetch_token_azure(refresh)
@@ -129,9 +130,7 @@ class ZepbenTokenFetcher(object):
 
 
     def _fetch_token_azure(self, refresh: bool = False) -> requests.Response:
-
-        if refresh:
-            raise UserWarning("At the moment Azure auth doesn't support refresh tokens. Use without refresh")
+        refresh = False # At the moment Azure auth doesn't support refresh tokens. So we always force new tokens.
 
         # Make sure we do the right thing for Azure
         self.token_request_data.update({
