@@ -15,7 +15,7 @@ setup(
     author_email="ramon.bouckaert@zepben.com",
     package_dir={"": "src"},
     packages=find_namespace_packages(where="src"),
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     install_requires=[
         "requests>=2.26.0, <2.27.0",
         "urllib3>=1.26.6, <1.27.0",
