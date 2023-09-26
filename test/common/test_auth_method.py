@@ -7,8 +7,9 @@ from zepben.auth import AuthMethod
 
 
 def test_auth_method():
-    assert len(AuthMethod) == 4
+    assert len(AuthMethod) == 5
     assert AuthMethod.NONE.value == "NONE"
     assert AuthMethod.SELF.value == "self"
     assert AuthMethod.AUTH0.value == "AUTH0"
+    assert AuthMethod.AZURE.value == "AZURE"
     assert AuthMethod.OAUTH.value == "OAUTH"

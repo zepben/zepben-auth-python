@@ -22,4 +22,5 @@ class AuthMethod(Enum):
     NONE = "NONE"
     SELF = "self"
     AUTH0 = "AUTH0"
+    AZURE = "AZURE"
     OAUTH = "OAUTH"

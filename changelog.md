@@ -1,3 +1,20 @@
+# Zepben Auth Python
+## [0.11.0] - UNRELEASED
+##### Breaking Changes
+* None.
+
+##### New Features
+* Support Azure Entra ID as an OAuth2 auth provider.
+
+##### Enhancements
+* None.
+
+##### Fixes
+* None.
+
+##### Notes
+* None.
+
 ## [0.10.0] - 2023-05-31
 ##### Breaking Changes
 * Public classes and functions are now imported through `zepben.auth` rather than `zepben.auth.client`:
