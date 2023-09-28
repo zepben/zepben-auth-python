@@ -1,4 +1,20 @@
 # Zepben Auth Python
+## [0.12.0] - UNRELEASED
+### Breaking Changes
+* None.
+
+### New Features
+* None.
+
+### Enhancements
+* None.
+
+### Fixes
+* None.
+
+### Notes
+* None.
+
 ## [0.11.0] - 2023-09-28
 ##### Breaking Changes
 * None.
