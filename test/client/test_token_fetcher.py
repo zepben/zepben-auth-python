@@ -162,7 +162,7 @@ class TestZepbenTokenFetcher:
         mock_post.assert_called_once_with(
             f"some_url",
             headers={'Metadata': 'true'},
-            verify=True
+            verify=False
         )  # Appropriate-looking identity request was made to the issuer
 
     @mock.patch('zepben.auth.client.zepben_token_fetcher.requests.post', side_effect=lambda *args, **kwargs: MockResponse(None, 404, "test reason", "test text"))
