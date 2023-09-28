@@ -5,7 +5,7 @@
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 import warnings
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional, Union, Callable, Dict
 import jwt
 import requests
 from dataclassy import dataclass
@@ -16,7 +16,39 @@ from zepben.auth.common.auth_exception import AuthException
 from zepben.auth.common.auth_method import AuthMethod
 
 
-__all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher"]
+__all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher", "create_token_fetcher_managed_identity"]
+
+
+def _fetch_token_generator(is_azure: bool, use_identity: bool, identity_url: Optional[str] = None) -> Callable[[Dict, Dict, str, str, str, str, bool], requests.Response]:
+    def _post_azure(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str, refresh: bool, verify: bool):
+        # Make sure we do the right thing for Azure
+        token_request_data.update({
+            'grant_type': 'client_credentials',
+        })
+        return requests.post(construct_url(issuer_protocol, issuer_domain, token_path), headers={"content-type": "application/x-www-form-urlencoded"},
+                      data=refresh_request_data if refresh else token_request_data, verify=verify)
+    def _post_other(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str, refresh: bool, verify: bool):
+        return requests.post(construct_url(issuer_protocol, issuer_domain, token_path), headers={"content-type": "application/json"},
+                      json=refresh_request_data if refresh else token_request_data, verify=verify)
+
+    post = _post_azure if is_azure else _post_other
+    def _get_token_response(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str,
+                           refresh: bool, verify: bool) -> requests.Response:
+        refresh = not is_azure and refresh # At the moment Azure auth doesn't support refresh tokens. So we always force new tokens.
+
+        return post(refresh_request_data, token_request_data, issuer_protocol, issuer_domain, token_path, refresh, verify)
+
+    def _get_token_response_from_identity(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str,
+                           refresh: bool = False, verify: bool = False) -> requests.Response:
+        return requests.get(identity_url, headers={"Metadata": "true"}, verify=verify)
+
+    if use_identity:
+        if not identity_url:
+            raise ValueError(f"Misconfiguration dectected - if use_identity is true, identity_url must also be provided. This is a bug, contact Zepben.")
+        return _get_token_response_from_identity
+    else:
+        return _get_token_response
+
 
 @dataclass
 class ZepbenTokenFetcher(object):
@@ -31,7 +63,7 @@ class ZepbenTokenFetcher(object):
     """ The domain of the token issuer. """
 
     auth_method: AuthMethod = AuthMethod.OAUTH
-    """ The authentication method used by the server """
+    """ Deprecated. Kept for backwards compatibility, but this is now unused. """
 
     issuer_protocol: str = "https"
     """ Protocol of the token issuer. You should not change this unless you are absolutely sure of what you are doing. Setting it to
@@ -51,6 +83,8 @@ class ZepbenTokenFetcher(object):
     Passed through to requests.post(). When this is a boolean, it determines whether or not to verify the HTTPS certificate of the OAUTH service.
     When this is a string, it is used as the filename of the certificate truststore to use when verifying the OAUTH service.
     """
+
+    _request_token: [Dict, Dict, str, str, str, str, bool] = _fetch_token_generator(False, False)
 
     _access_token = None
     _refresh_token = None
@@ -97,10 +131,7 @@ class ZepbenTokenFetcher(object):
         # We currently only support AZURE and Auth0
         # TODO: convert this into a callback passed into __init__ that fetches the token.
         response: requests.Response
-        if self.auth_method == AuthMethod.AZURE:
-            response = self._fetch_token_azure(refresh)
-        else:
-            response = self._fetch_token_auth0(refresh)
+        response = self._request_token(self.refresh_request_data, self.token_request_data, self.issuer_protocol, self.issuer_domain, self.token_path, refresh, self.verify)
 
         if not response.ok:
             raise AuthException(response.status_code, f'Token fetch failed, Error was: {response.reason} {response.text}')
@@ -129,28 +160,6 @@ class ZepbenTokenFetcher(object):
             self._refresh_token = data.get("refresh_token", None)
 
 
-    def _fetch_token_azure(self, refresh: bool = False) -> requests.Response:
-        refresh = False # At the moment Azure auth doesn't support refresh tokens. So we always force new tokens.
-
-        # Make sure we do the right thing for Azure
-        self.token_request_data.update({
-           'grant_type': 'client_credentials',
-        })
-        return requests.post(
-            construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
-            headers={"content-type": "application/x-www-form-urlencoded"},
-            data=self.refresh_request_data if refresh else self.token_request_data,
-            verify=self.verify
-        )
-
-
-    def _fetch_token_auth0(self, refresh: bool = False) -> requests.Response:
-        return requests.post(
-            construct_url(self.issuer_protocol, self.issuer_domain, self.token_path),
-            headers={"content-type": "application/json"},
-            json=self.refresh_request_data if refresh else self.token_request_data,
-            verify=self.verify
-        )
 
 def create_token_fetcher(
     conf_address: str,
@@ -197,7 +206,8 @@ def create_token_fetcher(
                             issuer_domain=auth_config_json[issuer_domain_field],
                             token_path=auth_config_json[token_path_field],
                             auth_method=auth_method,
-                            verify=verify_auth
+                            verify=verify_auth,
+                            _request_token=_fetch_token_generator(auth_method is AuthMethod.AZURE, False)
                         )
                 except ValueError:
                     raise AuthException(response.status_code, f"Expected JSON response from {conf_address}, but got: {response.text}.")
@@ -237,3 +247,21 @@ def get_token_fetcher(audience: str, issuer_domain: str, client_id: str, usernam
     })
 
     return token_fetcher
+
+def create_token_fetcher_managed_identity(identity_url: str, verify_auth: bool) -> ZepbenTokenFetcher:
+    """
+    Create a token fetcher specifically for use with Azure Managed Identities.
+    Most fields of the token fetcher will be unused, as they exist only for fetching tokens from token endpoints.
+    _request_token is overridden to use a simplified function which simply given an URL to fetch tokens from will return
+    a token for a host with a valid managed identity.
+    
+    :param identity_url: The URL to fetch a token from. Should contain the resource ID. Typically looks like:
+    "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=5ffcfee6-34cd-4c5c-bb7e-c5261d739341"
+    :param verify_auth: Whether to verify certificates for the identity_url. Only applies for https URLs.
+    """
+    return ZepbenTokenFetcher(
+        audience="",
+        issuer_domain="",
+        verify=verify_auth,
+        _request_token=_fetch_token_generator(True, True, identity_url)
+    )

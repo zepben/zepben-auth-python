@@ -5,6 +5,7 @@
 
 ##### New Features
 * Support Azure Entra ID as an OAuth2 auth provider.
+* Support Azure Managed Identities as a token fetching endpoint: `create_token_fetcher_managed_identity`
 
 ##### Enhancements
 * None.
