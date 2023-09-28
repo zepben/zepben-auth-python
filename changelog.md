@@ -1,5 +1,5 @@
 # Zepben Auth Python
-## [0.11.0] - UNRELEASED
+## [0.11.0] - 2023-09-28
 ##### Breaking Changes
 * None.
 
