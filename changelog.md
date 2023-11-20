@@ -10,7 +10,7 @@
 * None.
 
 ### Fixes
-* None.
+* Specify correct tokenPath and refresh token claims.
 
 ### Notes
 * None.

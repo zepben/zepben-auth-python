@@ -19,19 +19,25 @@ from zepben.auth.common.auth_method import AuthMethod
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher", "create_token_fetcher_managed_identity"]
 
 
-def _fetch_token_generator(is_azure: bool, use_identity: bool, identity_url: Optional[str] = None) -> Callable[[Dict, Dict, str, str, str, str, bool], requests.Response]:
+def _fetch_token_generator(is_azure: bool, use_identity: bool, identity_url: Optional[str] = None) -> Callable[[Dict, Dict, str, str, str, bool, bool], requests.Response]:
     def _post_azure(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str, refresh: bool, verify: bool):
-        # Make sure we do the right thing for Azure
+        # Azure requires a scope of the audience + /.default. We strip the / just in case so we don't end up with 2 slashes.
+        aud = refresh_request_data["audience"].rstrip('/') + "/.default"
+        refresh_request_data["scope"] = aud
+        # Also requires grant type client credentials for access tokens
         token_request_data.update({
             'grant_type': 'client_credentials',
+            'scope': aud
         })
         return requests.post(construct_url(issuer_protocol, issuer_domain, token_path), headers={"content-type": "application/x-www-form-urlencoded"},
                       data=refresh_request_data if refresh else token_request_data, verify=verify)
+
     def _post_other(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str, refresh: bool, verify: bool):
         return requests.post(construct_url(issuer_protocol, issuer_domain, token_path), headers={"content-type": "application/json"},
                       json=refresh_request_data if refresh else token_request_data, verify=verify)
 
     post = _post_azure if is_azure else _post_other
+
     def _get_token_response(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str,
                            refresh: bool, verify: bool) -> requests.Response:
         refresh = not is_azure and refresh # At the moment Azure auth doesn't support refresh tokens. So we always force new tokens.
@@ -84,7 +90,7 @@ class ZepbenTokenFetcher(object):
     When this is a string, it is used as the filename of the certificate truststore to use when verifying the OAUTH service.
     """
 
-    _request_token: [Dict, Dict, str, str, str, str, bool] = _fetch_token_generator(False, False)
+    _request_token: Callable[[Dict, Dict, str, str, str, bool, bool], requests.Response] = _fetch_token_generator(False, False)
 
     _access_token = None
     _refresh_token = None
@@ -94,10 +100,6 @@ class ZepbenTokenFetcher(object):
     def __init__(self):
         self.token_request_data["audience"] = self.audience
         self.refresh_request_data["audience"] = self.audience
-
-        # Azure is using that as a scope, not "audience"
-        self.token_request_data["scope"] = self.audience + "/.default"
-        self.refresh_request_data["scope"] = self.audience + "/.default"
 
     def fetch_token(self) -> str:
         """
@@ -141,11 +143,6 @@ class ZepbenTokenFetcher(object):
         except ValueError:
             raise AuthException(response.status_code, f'Response did not contain expected JSON - response was: {response.text}')
 
-        try:
-            data = response.json()
-        except ValueError:
-            raise AuthException(response.status_code, f'Response did not contain expected JSON - response was: {response.text}')
-
         if "error" in data or "access_token" not in data:
             raise AuthException(
                 response.status_code,
@@ -158,7 +155,6 @@ class ZepbenTokenFetcher(object):
 
         if refresh:
             self._refresh_token = data.get("refresh_token", None)
-
 
 
 def create_token_fetcher(
@@ -204,7 +200,7 @@ def create_token_fetcher(
                         return ZepbenTokenFetcher(
                             audience=auth_config_json[audience_field],
                             issuer_domain=auth_config_json[issuer_domain_field],
-                            token_path=auth_config_json[token_path_field],
+                            token_path=auth_config_json.get(token_path_field, "/oauth/token"),
                             auth_method=auth_method,
                             verify=verify_auth,
                             _request_token=_fetch_token_generator(auth_method is AuthMethod.AZURE, False)
