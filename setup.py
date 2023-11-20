@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 test_deps = ["pytest", "pytest-cov"]
 setup(
     name="zepben.auth",
-    version="0.12.0b1",
+    version="0.12.0b2",
     description="Utilities for authenticating to the Evolve App Server and Energy Workbench Server",
     long_description=long_description,
     long_description_content_type="text/markdown",
