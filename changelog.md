@@ -1,5 +1,5 @@
 # Zepben Auth Python
-## [0.11.1] - UNRELEASED
+## [0.11.1] - 2024-01-16
 ### Breaking Changes
 * None.
 
