@@ -6,46 +6,58 @@
 import warnings
 from datetime import datetime
 from typing import Optional, Union, Callable, Dict
+
 import jwt
 import requests
 from dataclassy import dataclass
 from urllib3.exceptions import InsecureRequestWarning
-
-from zepben.auth.client.util import construct_url
 from zepben.auth.common.auth_exception import AuthException
 from zepben.auth.common.auth_method import AuthMethod
+from zepben.auth.common.auth_provider_config import AuthProviderConfig, create_auth_provider_config, fetch_provider_details
 
 
 __all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher", "create_token_fetcher_managed_identity"]
 
 
-def _fetch_token_generator(is_azure: bool, use_identity: bool, identity_url: Optional[str] = None) -> Callable[[Dict, Dict, str, str, str, bool, bool], requests.Response]:
-    def _post_azure(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str, refresh: bool, verify: bool):
-        # Azure requires a scope of the audience + /.default. We strip the / just in case so we don't end up with 2 slashes.
-        aud = refresh_request_data["audience"].rstrip('/') + "/.default"
-        refresh_request_data["scope"] = aud
+def _fetch_token_generator(is_entraid: bool, use_identity: bool, identity_url: Optional[str] = None) -> Callable[
+    [Dict, Dict, str, str, str, bool, bool], requests.Response]:
+    def post(
+        refresh_request_data: Dict,
+        token_request_data: Dict,
+        token_endpoint: str,
+        refresh: bool,
+        verify: bool
+    ):
+
+        # EntraID requires a scope of the audience + /.default. We strip the / just in case so we don't end up with 2 slashes.
+        refresh_request_data["scope"] = refresh_request_data["audience"] + "/.default"
         # Also requires grant type client credentials for access tokens
         token_request_data.update({
             'grant_type': 'client_credentials',
-            'scope': aud
+            'scope': refresh_request_data["audience"] + "/.default"
+
         })
-        return requests.post(construct_url(issuer_protocol, issuer_domain, token_path), headers={"content-type": "application/x-www-form-urlencoded"},
-                      data=refresh_request_data if refresh else token_request_data, verify=verify)
 
-    def _post_other(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str, refresh: bool, verify: bool):
-        return requests.post(construct_url(issuer_protocol, issuer_domain, token_path), headers={"content-type": "application/json"},
-                      json=refresh_request_data if refresh else token_request_data, verify=verify)
+        return requests.post(
+            url = token_endpoint,
+            headers={"content-type": "application/x-www-form-urlencoded"},
+            data=refresh_request_data if refresh else token_request_data,
+            verify=verify
+        )
 
-    post = _post_azure if is_azure else _post_other
+    def _get_token_response(refresh_request_data: Dict, token_request_data: Dict, token_endpoint: str, refresh: bool, verify: bool) -> requests.Response:
+        refresh = not is_entraid and refresh  # At the moment Azure auth doesn't support refresh tokens. So we always force new tokens.
 
-    def _get_token_response(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str,
-                           refresh: bool, verify: bool) -> requests.Response:
-        refresh = not is_azure and refresh # At the moment Azure auth doesn't support refresh tokens. So we always force new tokens.
-
-        return post(refresh_request_data, token_request_data, issuer_protocol, issuer_domain, token_path, refresh, verify)
+        return post(
+            refresh_request_data,
+            token_request_data,
+            token_endpoint,
+            refresh,
+            verify
+        )
 
     def _get_token_response_from_identity(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str,
-                           refresh: bool = False, verify: bool = False) -> requests.Response:
+                                          refresh: bool = False, verify: bool = False) -> requests.Response:
         return requests.get(identity_url, headers={"Metadata": "true"}, verify=verify)
 
     if use_identity:
@@ -62,21 +74,14 @@ class ZepbenTokenFetcher(object):
     Fetches access tokens from an authentication provider using the OAuth 2.0 protocol.
     """
 
-    audience: str
-    """ Audience to use when requesting tokens """
-
-    issuer_domain: str
-    """ The domain of the token issuer. """
-
     auth_method: AuthMethod = AuthMethod.OAUTH
     """ Deprecated. Kept for backwards compatibility, but this is now unused. """
 
-    issuer_protocol: str = "https"
-    """ Protocol of the token issuer. You should not change this unless you are absolutely sure of what you are doing. Setting it to
-        anything other than https is a major security risk as tokens will be sent in the clear. """
+    audience: str
+    """ Audience to use when requesting tokens """
 
-    token_path: str = "/oauth/token"
-    """ Path for requesting token from `issuer_domain`. """
+    token_endpoint: str
+    """ The domain of the token issuer. """
 
     token_request_data = {}
     """ Data to pass in token requests. """
@@ -98,8 +103,8 @@ class ZepbenTokenFetcher(object):
     _token_type = None
 
     def __init__(self):
-        self.token_request_data["audience"] = self.audience
-        self.refresh_request_data["audience"] = self.audience
+        self.token_request_data["audience"] = self.audience.rstrip('/')
+        self.refresh_request_data["audience"] = self.audience.rstrip('/')
 
     def fetch_token(self) -> str:
         """
@@ -110,7 +115,7 @@ class ZepbenTokenFetcher(object):
             # Stored token has expired, try to refresh
             self._access_token = None
             if self._refresh_token:
-                self._fetch_token(True)
+                self._fetch_token(refresh=True)
 
             if self._access_token is None:
                 # If using the refresh token did not work for any reason, self._access_token will still be None.
@@ -120,8 +125,8 @@ class ZepbenTokenFetcher(object):
             # Just to give a friendly error if a token retrieval failed for a case we haven't handled.
             if not self._token_type or not self._access_token:
                 raise Exception(
-                    f"Token couldn't be retrieved from {construct_url(self.issuer_protocol, self.issuer_domain, self.token_path)} using configuration "
-                    f"{self.auth_method}, audience: {self.audience}, token issuer: {self.issuer_domain}"
+                    f"Token couldn't be retrieved from {self.token_endpoint} using configuration "
+                    f"{self.auth_method}, audience: {self.audience}"
                 )
 
         return f"{self._token_type} {self._access_token}"
@@ -130,10 +135,17 @@ class ZepbenTokenFetcher(object):
         if refresh:
             self.refresh_request_data["refresh_token"] = self._refresh_token
 
-        # We currently only support AZURE and Auth0
+        # We currently only support EntraID and Auth0
         # TODO: convert this into a callback passed into __init__ that fetches the token.
+
         response: requests.Response
-        response = self._request_token(self.refresh_request_data, self.token_request_data, self.issuer_protocol, self.issuer_domain, self.token_path, refresh, self.verify)
+        response = self._request_token(
+            self.refresh_request_data,
+            self.token_request_data,
+            self.token_endpoint,
+            refresh,
+            self.verify
+        )
 
         if not response.ok:
             raise AuthException(response.status_code, f'Token fetch failed, Error was: {response.reason} {response.text}')
@@ -163,8 +175,7 @@ def create_token_fetcher(
     verify_auth: Union[bool, str] = True,
     auth_type_field: str = "authType",
     audience_field: str = "audience",
-    issuer_domain_field: str = "issuerDomain",
-    token_path_field: str = "tokenPath"
+    issuer_field: str = "issuer",
 ) -> Optional[ZepbenTokenFetcher]:
     """
     Helper method to fetch auth related configuration from `conf_address` and create a :class:`ZepbenTokenFetcher`
@@ -174,10 +185,9 @@ def create_token_fetcher(
                         the HTTPS certificate of `conf_address`. When this is a string, it is used as the filename of the certificate truststore to use
                         when verifying `conf_address`.
     :param verify_auth: Passed through to the resulting :class:`ZepbenTokenFetcher`.
-    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.authType`.
-    :param audience_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.audience`.
-    :param issuer_domain_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.issuerDomain`.
-    :param token_path_field: The field name to look up in the JSON response from the conf_address for `token_fetcher.tokenPath`.
+    :param auth_type_field: The field name to look up in the JSON response from the conf_address for `auth_type`.
+    :param audience_field: The field name to look up in the JSON response from the conf_address for `audience`.
+    :param issuer: The field name to look up in the JSON response from the conf_address for `issuer`.
 
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
@@ -185,48 +195,43 @@ def create_token_fetcher(
         if not verify_conf:
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
-        try:
-            response = requests.get(conf_address, verify=verify_conf)
-        except Exception as e:
-            warnings.warn(str(e))
-            warnings.warn("If RemoteDisconnected, this process may hang indefinitely.")
-            raise ConnectionError("Are you trying to connect to a HTTPS server with HTTP?")
-        else:
-            if response.ok:
-                try:
-                    auth_config_json = response.json()
-                    auth_method = AuthMethod(auth_config_json[auth_type_field])
-                    if auth_method is not AuthMethod.NONE:
-                        return ZepbenTokenFetcher(
-                            audience=auth_config_json[audience_field],
-                            issuer_domain=auth_config_json[issuer_domain_field],
-                            token_path=auth_config_json.get(token_path_field, "/oauth/token"),
-                            auth_method=auth_method,
-                            verify=verify_auth,
-                            _request_token=_fetch_token_generator(auth_method is AuthMethod.AZURE, False)
-                        )
-                except ValueError:
-                    raise AuthException(response.status_code, f"Expected JSON response from {conf_address}, but got: {response.text}.")
-            else:
-                raise AuthException(
-                    response.status_code,
-                    f"{conf_address} responded with: {response.reason} {response.text}"
-                )
+        config = create_auth_provider_config(
+            conf_address,
+            verify_conf,
+            auth_type_field=auth_type_field,
+            issuer_field=issuer_field,
+            audience_field=audience_field)
+
+        if config.auth_method is not AuthMethod.NONE:
+            return ZepbenTokenFetcher(
+                auth_method=config.auth_method,
+                audience=config.audience,
+                token_endpoint=config.provider_details.token_endpoint,
+                verify=verify_auth,
+                _request_token=_fetch_token_generator(config.auth_method is AuthMethod.ENTRAID, False)
+            )
 
     return None
 
 
-def get_token_fetcher(audience: str, issuer_domain: str, client_id: str, username: str, password: str) -> ZepbenTokenFetcher:
+def get_token_fetcher(audience: str, issuer: str, client_id: str, username: str, password: str) -> ZepbenTokenFetcher:
     """
     Create a token fetcher for the given audience and client, using username and password.
 
     :param audience: The OAuth audience for this client.
-    :param issuer_domain: The domain of the issuer - e.g zepben.au.auth0.com
+    :param issuer: The domain of the issuer - e.g zepben.au.auth0.com
     :param client_id: The client id to use.
     :param username: The user to log in as. Must have access to the provided audience.
     :param password: The corresponding password for the user.
     """
-    token_fetcher = ZepbenTokenFetcher(audience=audience, issuer_domain=issuer_domain, auth_method=AuthMethod.OAUTH)
+
+    config = AuthProviderConfig(
+        issuer = issuer,
+        audience = audience,
+        provider_details = fetch_provider_details(issuer)
+    )
+
+    token_fetcher = ZepbenTokenFetcher(audience=audience, token_endpoint=config.provider_details.token_endpoint, auth_method=AuthMethod.OAUTH)
     token_fetcher.token_request_data.update({
         'client_id': client_id,
         'scope': 'offline_access openid profile email0'
@@ -244,6 +249,7 @@ def get_token_fetcher(audience: str, issuer_domain: str, client_id: str, usernam
 
     return token_fetcher
 
+
 def create_token_fetcher_managed_identity(identity_url: str, verify_auth: bool) -> ZepbenTokenFetcher:
     """
     Create a token fetcher specifically for use with Azure Managed Identities.
@@ -257,7 +263,8 @@ def create_token_fetcher_managed_identity(identity_url: str, verify_auth: bool) 
     """
     return ZepbenTokenFetcher(
         audience="",
-        issuer_domain="",
+        issuer="",
+        token_endpoint="",
         verify=verify_auth,
         _request_token=_fetch_token_generator(True, True, identity_url)
     )
