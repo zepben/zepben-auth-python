@@ -62,7 +62,7 @@ def _fetch_token_generator(is_entraid: bool, use_identity: bool, identity_url: O
 
     if use_identity:
         if not identity_url:
-            raise ValueError(f"Misconfiguration dectected - if use_identity is true, identity_url must also be provided. This is a bug, contact Zepben.")
+            raise ValueError("Misconfiguration dectected - if use_identity is true, identity_url must also be provided. This is a bug, contact Zepben.")
         return _get_token_response_from_identity
     else:
         return _get_token_response
@@ -95,7 +95,7 @@ class ZepbenTokenFetcher(object):
     When this is a string, it is used as the filename of the certificate truststore to use when verifying the OAUTH service.
     """
 
-    _request_token: Callable[[Dict, Dict, str, str, str, bool, bool], requests.Response] = _fetch_token_generator(False, False)
+    _request_token: Callable[[Dict, Dict, str, bool, bool], requests.Response] = _fetch_token_generator(False, False)
 
     _access_token = None
     _refresh_token = None
