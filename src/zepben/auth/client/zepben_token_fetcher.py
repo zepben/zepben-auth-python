@@ -187,7 +187,7 @@ def create_token_fetcher(
     :param verify_auth: Passed through to the resulting :class:`ZepbenTokenFetcher`.
     :param auth_type_field: The field name to look up in the JSON response from the conf_address for `auth_type`.
     :param audience_field: The field name to look up in the JSON response from the conf_address for `audience`.
-    :param issuer: The field name to look up in the JSON response from the conf_address for `issuer`.
+    :param issuer_field: The field name to look up in the JSON response from the conf_address for `issuer`.
 
     :returns: A :class:`ZepbenTokenFetcher` if the server reported authentication was configured, otherwise None.
     """
