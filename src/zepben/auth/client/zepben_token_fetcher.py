@@ -30,13 +30,14 @@ def _fetch_token_generator(is_entraid: bool, use_identity: bool, identity_url: O
     ):
 
         # EntraID requires a scope of the audience + /.default. We strip the / just in case so we don't end up with 2 slashes.
-        refresh_request_data["scope"] = refresh_request_data["audience"] + "/.default"
-        # Also requires grant type client credentials for access tokens
-        token_request_data.update({
-            'grant_type': 'client_credentials',
-            'scope': refresh_request_data["audience"] + "/.default"
+        if is_entraid:
+            refresh_request_data["scope"] = refresh_request_data["audience"] + "/.default"
+            # Also requires grant type client credentials for access tokens
+            token_request_data.update({
+                'grant_type': 'client_credentials',
+                'scope': refresh_request_data["audience"] + "/.default"
 
-        })
+            })
 
         return requests.post(
             url = token_endpoint,
@@ -103,8 +104,8 @@ class ZepbenTokenFetcher(object):
     _token_type = None
 
     def __init__(self):
-        self.token_request_data["audience"] = self.audience.rstrip('/')
-        self.refresh_request_data["audience"] = self.audience.rstrip('/')
+        self.token_request_data["audience"] = self.audience
+        self.refresh_request_data["audience"] = self.audience
 
     def fetch_token(self) -> str:
         """
