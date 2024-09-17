@@ -41,7 +41,7 @@ class AuthProviderConfig:
 
 def fetch_provider_details(issuer: str) -> ProviderDetails:
     try:
-        issuer_url = f"{issuer}/.well-known/openid-configuration"
+        issuer_url = f"{issuer.rstrip('/')}/.well-known/openid-configuration"
         response = requests.get(issuer_url)
 
     except Exception as e:
