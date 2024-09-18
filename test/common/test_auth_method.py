@@ -11,5 +11,5 @@ def test_auth_method():
     assert AuthMethod.NONE.value == "NONE"
     assert AuthMethod.SELF.value == "self"
     assert AuthMethod.AUTH0.value == "AUTH0"
-    assert AuthMethod.AZURE.value == "AZURE"
+    assert AuthMethod.ENTRAID.value == "ENTRAID"
     assert AuthMethod.OAUTH.value == "OAUTH"

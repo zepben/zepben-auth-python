@@ -1,10 +1,11 @@
 # Zepben Auth Python
 ## [0.12.0] - UNRELEASED
 ### Breaking Changes
-* None.
+* `ZepbenTokenFetcher` and helper functions have changed signatures, so clients need to update.
 
 ### New Features
-* None.
+* Added `AuthProviderConfig` object to handle provider-related configuration.
+* Added helper functions to fetch auth configuration from EWB and provider configuration
 
 ### Enhancements
 * None.
