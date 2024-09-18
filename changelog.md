@@ -11,7 +11,7 @@
 * None.
 
 ### Fixes
-* None.
+* Fixed `_get_token_response_from_identity` function parameters so that callers pass correct values.
 
 ### Notes
 * None.

@@ -20,7 +20,7 @@ __all__ = ["ZepbenTokenFetcher", "create_token_fetcher", "get_token_fetcher", "c
 
 
 def _fetch_token_generator(is_entraid: bool, use_identity: bool, identity_url: Optional[str] = None) -> Callable[
-    [Dict, Dict, str, str, str, bool, bool], requests.Response]:
+    [Dict, Dict, str, bool, bool], requests.Response]:
     def post(
         refresh_request_data: Dict,
         token_request_data: Dict,
@@ -57,8 +57,7 @@ def _fetch_token_generator(is_entraid: bool, use_identity: bool, identity_url: O
             verify
         )
 
-    def _get_token_response_from_identity(refresh_request_data: Dict, token_request_data: Dict, issuer_protocol: str, issuer_domain: str, token_path: str,
-                                          refresh: bool = False, verify: bool = False) -> requests.Response:
+    def _get_token_response_from_identity(refresh_request_data: Dict, token_request_data: Dict, token_endpoint: str, refresh: bool = False, verify: bool = False) -> requests.Response:
         return requests.get(identity_url, headers={"Metadata": "true"}, verify=verify)
 
     if use_identity:
