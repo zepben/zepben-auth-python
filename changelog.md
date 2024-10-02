@@ -12,8 +12,9 @@
 ### Fixes
 * None.
 
+## [0.12.1] - UNRELEASED
 ### Notes
-* None.
+* We now support requests up to v3.0.0 (exclusive)
 
 ## [0.12.0] - 2024-09-20
 ### Breaking Changes
