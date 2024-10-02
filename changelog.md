@@ -1,5 +1,5 @@
 # Zepben Auth Python
-## [0.12.1] - UNRELEASED
+## [0.12.1] - 2024-10-02
 ### Notes
 * We now support requests up to v3.0.0 (exclusive)
 
