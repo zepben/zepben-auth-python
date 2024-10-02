@@ -1,4 +1,20 @@
 # Zepben Auth Python
+## [0.12.1b1] - UNRELEASED
+### Breaking Changes
+* None.
+
+### New Features
+* None.
+
+### Enhancements
+* None.
+
+### Fixes
+* None.
+
+### Notes
+* None.
+
 ## [0.12.0] - 2024-09-20
 ### Breaking Changes
 * `ZepbenTokenFetcher` and helper functions have changed signatures, so clients need to update.
