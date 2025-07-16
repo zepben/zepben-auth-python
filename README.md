@@ -1,14 +1,21 @@
+> [!WARNING]  
+> This repo has been incorporated into the [EWB SDK](https://github.com/zepben/ewb-sdk-python) and will no longer be
+> maintained.
+>
+> The packages from this library will be available in the SDK as the following packages:
+> * `zepben.auth` -> `zepben.ewb.auth` or directly from `zepben.ewb`
+
 # Zepben Auth Library #
 
 This library provides Authentication mechanisms for Zepben SDKs used with Energy Workbench and other Zepben services.
 
-Typically this library will be used by the SDKs to plug into connection mechanisms. It is unlikely that end users will
+Typically, this library will be used by the SDKs to plug into connection mechanisms. It is unlikely that end users will
 need to use this library directly.
 
 # Example Usage #
 
 ```python
-from zepben.auth.client import get_token_fetcher
+from zepben.ewb.auth.client import get_token_fetcher
 
 authenticator = get_token_fetcher(
     issuer="https://login.microsoftonline.com/293784982371c-8797-4168-a5e7-923874928734/v2.0/",
